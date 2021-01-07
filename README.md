@@ -1,7 +1,7 @@
-# DBMS_Course_Desgin
+# DBMS_Course_Desginb
 
 This is a DBMS for Database System Course Desgin at ECUST.
-a.cpp:查看表内容
+b.cpp:查看表内容
 bms2.cpp：建立dat文件
 dbms3.cpp:实现插入功能
 现存问题：
