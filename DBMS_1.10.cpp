@@ -10,103 +10,106 @@
 #include <io.h>
 
 #include <fstream>
+#define MAX_SIZE 1000000
 
 using namespace std;
 
-const int inf = 0x3f3f3f3f;//intĞÍÕûÊıµÄ×î´óÖµ
+const int inf = 0x3f3f3f3f;//intå‹æ•´æ•°çš„æœ€å¤§å€¼
 
 struct Tables {
-	string name;//±íÃû
-	string pathName;//´æ´¢Â·¾¶Ãû³Æ
-	vector<string>colName;//ÁĞÃû³Æ
-	vector<string>type;//ÀàĞÍ
-	vector<int>size;//´óĞ¡
-	FILE* fp;//ÎÄ¼şÖ¸Õë
+	string name;//è¡¨å
+	string pathName;//å­˜å‚¨è·¯å¾„åç§°
+	vector<string>colName;//åˆ—åç§°
+	vector<string>type;//ç±»å‹
+	vector<int>size;//å¤§å°
+	FILE* fp;//æ–‡ä»¶æŒ‡é’ˆ
 };
 
 class myDBMS {
 	vector<Tables*>tab;
-	bool open;//ÊÇ·ñ´ò¿ª
+	bool open;//æ˜¯å¦æ‰“å¼€
 public:
-	string cmd;//sqlÓï¾ä
-	string prePath;//Êı¾İ¿âµÄÎÄ¼şÂ·¾¶
+	string cmd;//sqlè¯­å¥
+	string prePath;//æ•°æ®åº“çš„æ–‡ä»¶è·¯å¾„
 
 	myDBMS() {
-		cmd = "";//³õÊ¼»¯
+		cmd = "";//åˆå§‹åŒ–
 		prePath = "";
-		open = false;//³õÊ¼»¯Êı¾İ¿âÎ´´ò¿ª
+		open = false;//åˆå§‹åŒ–æ•°æ®åº“æœªæ‰“å¼€
 
-		//½¨¿âÉ¾¿â,½¨±íÉ¾±í,ÔöÉ¾¸Ä²é
-		cout << "Çë°´ÒÔÏÂ¹æÔòÊäÈëÃüÁîÓï¾ä(ÃüÁî²»·Ö´óĞ¡Ğ´)" << endl;
-		cout << "ĞÂ½¨Êı¾İ¿â: create database Êı¾İ¿âÃû×Ö" << endl;
-		cout << "É¾³ıÊı¾İ¿â: drop database Êı¾İ¿âÃû×Ö" << endl;
-		cout << "´ò¿ªÊı¾İ¿â: open database Êı¾İ¿âÃû×Ö" << endl;
-		cout << "¹Ø±ÕÊı¾İ¿â: close database Êı¾İ¿âÃû×Ö" << endl;
-		cout << "Ìí¼ÓĞÂ±í  : create table  ±íÃû" << endl;
+		//å»ºåº“åˆ åº“,å»ºè¡¨åˆ è¡¨,å¢åˆ æ”¹æŸ¥
+		cout << "è¯·æŒ‰ä»¥ä¸‹è§„åˆ™è¾“å…¥å‘½ä»¤è¯­å¥(å‘½ä»¤ä¸åˆ†å¤§å°å†™)" << endl;
+		cout << "æ–°å»ºæ•°æ®åº“: create database æ•°æ®åº“åå­—" << endl;
+		cout << "åˆ é™¤æ•°æ®åº“: drop database æ•°æ®åº“åå­—" << endl;
+		cout << "æ‰“å¼€æ•°æ®åº“: open database æ•°æ®åº“åå­—" << endl;
+		cout << "å…³é—­æ•°æ®åº“: close database æ•°æ®åº“åå­—" << endl;
+		cout << "æ·»åŠ æ–°è¡¨  : create table  è¡¨å" << endl;
 		cout << "            (" << endl;
-		cout << "            ÁĞ1(×Ö¶Î)Ãû Êı¾İÀàĞÍ1(´óĞ¡:ÈôÎª1¿ÉÊ¡ÂÔ)" << endl;
-		cout << "            ÁĞ2(×Ö¶Î)Ãû Êı¾İÀàĞÍ2(´óĞ¡:ÈôÎª1¿ÉÊ¡ÂÔ)" << endl;
-		cout << "            ¡­          ¡­" << endl;
+		cout << "            åˆ—1(å­—æ®µ)å æ•°æ®ç±»å‹1(å¤§å°:è‹¥ä¸º1å¯çœç•¥)" << endl;
+		cout << "            åˆ—2(å­—æ®µ)å æ•°æ®ç±»å‹2(å¤§å°:è‹¥ä¸º1å¯çœç•¥)" << endl;
+		cout << "            â€¦          â€¦" << endl;
 		cout << "            )" << endl;
-		cout << "É¾³ı¾É±í  : drop table ±íÃû" << endl;
-		cout << "²é¿´È«±í  : select all from ±íÃû" << endl;
-		cout << "²éÑ¯µ¥Öµ  : select ÁĞÃû from ±íÃû where ÁĞÃû = Öµ(Öµ¿ÉÎªall,±íÈ«²¿·¶Î§)" << endl;
-		cout << "²åÈë      : insert into ±íÃû(field1,field2,¡­) values(value1,value2,¡­)" << endl;
-		cout << "ĞŞ¸Ä      : update ÁĞÃû = ĞÂÖµ from ±íÃû where ÁĞÃû = Öµ(Öµ¿ÉÎªall,±íÈ«²¿·¶Î§)" << endl;
-		cout << "É¾³ı      : delete from ±íÃû where ÁĞÃû = Öµ(Öµ¿ÉÎªall,±íÈ«²¿·¶Î§)" << endl;
-		cout << "ÍË³ö³ÌĞò  : exit" << endl;
+		cout << "åˆ é™¤æ—§è¡¨  : drop table è¡¨å" << endl;
+		cout << "æŸ¥çœ‹å…¨è¡¨  : select all from è¡¨å" << endl;
+		cout << "æŸ¥è¯¢å•å€¼  : select åˆ—å from è¡¨å where åˆ—å = å€¼(å€¼å¯ä¸ºall,è¡¨å…¨éƒ¨èŒƒå›´)" << endl;
+		cout << "æ’å…¥      : insert into è¡¨å(field1,field2,â€¦) values(value1,value2,â€¦)" << endl;
+		cout << "ä¿®æ”¹      : update åˆ—å = æ–°å€¼ from è¡¨å where åˆ—å = å€¼(å€¼å¯ä¸ºall,è¡¨å…¨éƒ¨èŒƒå›´)" << endl;
+		cout << "åˆ é™¤      : delete from è¡¨å where åˆ—å = å€¼(å€¼å¯ä¸ºall,è¡¨å…¨éƒ¨èŒƒå›´)" << endl;
+		cout << "é€€å‡ºç¨‹åº  : exit" << endl;
 	}
-	//³·ÏúÀà¶ÔÏóÊ±£¬µ÷ÓÃÎö¹¹º¯Êı
+	//æ’¤é”€ç±»å¯¹è±¡æ—¶ï¼Œè°ƒç”¨ææ„å‡½æ•°
 	~myDBMS() {
-		for (int i = 0; i < tab.size(); i++) {//µ±±í¿ÉÒÔ´ò¿ªÊ±£¬¹Ø±Õ´ò¿ªµÄ±í²¢deleteµô
+		for (int i = 0; i < tab.size(); i++) {//å½“è¡¨å¯ä»¥æ‰“å¼€æ—¶ï¼Œå…³é—­æ‰“å¼€çš„è¡¨å¹¶deleteæ‰
 			if (tab[i]->fp != NULL)
 				fclose(tab[i]->fp);
 			delete tab[i];
 		}
-		tab.resize(0);//ÖØĞÂÉèÖÃÈİÆ÷´óĞ¡Îª0
+		tab.resize(0);//é‡æ–°è®¾ç½®å®¹å™¨å¤§å°ä¸º0
 		cmd = "";
 		prePath = "";
 	}
 
-	void transfer();//×ªÎªĞ¡Ğ´
-	void openDataBase(string);//´ò¿ªÊı¾İ¿â
-	void closeDataBase();//¹Ø±ÕÊı¾İ¿â
-	void myCreateDataBase(string); //½¨Á¢Êı¾İ¿â
-	void myDropDataBase(string); //É¾³ıÊı¾İ¿â
-	void myCreateTable(string); //´´½¨±í
-	void myDropTable(string); //É¾³ı±í
-	void myInsert(string,string); //²åÈëÊı¾İ
-	void myDelete(string,string); //É¾³ıÊı¾İ
-	void myUpdate(string, string, string, string); //¸üĞÂÊı¾İ
-	void myQuery(string, string, string); //²éÑ¯Êı¾İ
-	string get_toColName(string);//»ñÈ¡toColName
+	void transfer();//è½¬ä¸ºå°å†™
+	void openDataBase(string);//æ‰“å¼€æ•°æ®åº“
+	void closeDataBase();//å…³é—­æ•°æ®åº“
+	void myCreateDataBase(string); //å»ºç«‹æ•°æ®åº“
+	void myDropDataBase(string); //åˆ é™¤æ•°æ®åº“
+	void myCreateTable(string); //åˆ›å»ºè¡¨
+	void myDropTable(string); //åˆ é™¤è¡¨
+	void myInsert(string,string); //æ’å…¥æ•°æ®
+	void myDelete(string,string); //åˆ é™¤æ•°æ®
+	void myUpdate(string, string, string, string); //æ›´æ–°æ•°æ®
+	void myQuery(string, string, string); //æŸ¥è¯¢æ•°æ®
+	void connect(string,string);
+	void productImplement(vector<vector<string>> dimvalue,vector<vector<string>> &res,int,vector<string> tmp);
+	string get_toColName(string);//è·å–toColName
 
-	int posIsNos(string);//¸¨Öúº¯Êı
+	int posIsNos(string);//è¾…åŠ©å‡½æ•°
 };
 
-//×ªÎªĞ¡Ğ´
-void myDBMS::transfer() {//°ÑsqlÓï¾äÖĞµÄ×ÖÄ¸È«²¿×ª»»ÎªĞ¡Ğ´
+//è½¬ä¸ºå°å†™
+void myDBMS::transfer() {//æŠŠsqlè¯­å¥ä¸­çš„å­—æ¯å…¨éƒ¨è½¬æ¢ä¸ºå°å†™
 	for (int i = 0; i < cmd.size(); i++)
 		cmd[i] = tolower(cmd[i]);
 }
 
-//´ò¿ªÊı¾İ¿â£¬²ÎÊıÎªÊı¾İ¿âÃû
+//æ‰“å¼€æ•°æ®åº“ï¼Œå‚æ•°ä¸ºæ•°æ®åº“å
 void myDBMS::openDataBase(string dataBaseName) {
-	if (open) {//Èç¹ûÒÑÓĞÊı¾İ¿â´ò¿ª
-		cout << "ÇëÏÈ¹Ø±Õµ±Ç°´ò¿ªµÄÊı¾İ¿â" << endl;
+	if (open) {//å¦‚æœå·²æœ‰æ•°æ®åº“æ‰“å¼€
+		cout << "è¯·å…ˆå…³é—­å½“å‰æ‰“å¼€çš„æ•°æ®åº“" << endl;
 		return;
 	}
-	string pathName = "C:\\Users\\stell\\Desktop\\Êı¾İ¿âÔ­Àí¿Î³ÌÉè¼ÆÎÄµµ202012\\DBMS\\" + dataBaseName;//Æ´½Ó´æ´¢Â·¾¶
-	//¼ì²éÊı¾İ¿âÊÇ·ñ´æÔÚ
-	if (0 != access(pathName.c_str(), 0))printf("¸ÃÊı¾İ¿â²»´æÔÚ\n");//c_str:°ÑC++ÖĞµÄstring×ª»»³ÉCµÄ×Ö·û´®
+	string pathName = "C:\\Users\\stell\\Desktop\\æ•°æ®åº“åŸç†è¯¾ç¨‹è®¾è®¡æ–‡æ¡£202012\\DBMS\\" + dataBaseName;//æ‹¼æ¥å­˜å‚¨è·¯å¾„
+	//æ£€æŸ¥æ•°æ®åº“æ˜¯å¦å­˜åœ¨
+	if (0 != access(pathName.c_str(), 0))printf("è¯¥æ•°æ®åº“ä¸å­˜åœ¨\n");//c_str:æŠŠC++ä¸­çš„stringè½¬æ¢æˆCçš„å­—ç¬¦ä¸²
 	else {
 		prePath = pathName + "\\";
-		cout << "´ò¿ªÊı¾İ¿â³É¹¦" << endl;
+		cout << "æ‰“å¼€æ•°æ®åº“æˆåŠŸ" << endl;
 		open = true;
 	}
 }
 
-//¹Ø±ÕÊı¾İ¿â£¬ºÍÎö¹¹º¯ÊıÏàÍ¬
+//å…³é—­æ•°æ®åº“ï¼Œå’Œææ„å‡½æ•°ç›¸åŒ
 void myDBMS::closeDataBase() {
 	for (int i = 0; i < tab.size(); i++) {
 		if (tab[i]->fp != NULL)
@@ -119,79 +122,79 @@ void myDBMS::closeDataBase() {
 	open = false;
 }
 
-//½¨Á¢Êı¾İ¿â
+//å»ºç«‹æ•°æ®åº“
 void myDBMS::myCreateDataBase(string dataBaseName) {
-	string pathName = "C:\\Users\\stell\\Desktop\\Êı¾İ¿âÔ­Àí¿Î³ÌÉè¼ÆÎÄµµ202012\\DBMS\\" + dataBaseName;
-	//ÏÈÅĞ¶ÏÊÇ·ñÓĞ¸ÃÊı¾İ¿â´æÔÚ
+	string pathName = "C:\\Users\\stell\\Desktop\\æ•°æ®åº“åŸç†è¯¾ç¨‹è®¾è®¡æ–‡æ¡£202012\\DBMS\\" + dataBaseName;
+	//å…ˆåˆ¤æ–­æ˜¯å¦æœ‰è¯¥æ•°æ®åº“å­˜åœ¨
 	if (0 != access(pathName.c_str(), 0)) {
-        //·µ»Ø0±íÊ¾´´½¨³É¹¦,-1±íÊ¾Ê§°Ü,mkdir(path,mode)´´½¨Ä¿Â¼,modeÄ¬ÈÏ0777£¨ÔÊĞíÈ«¾Ö·ÃÎÊ£©
+        //è¿”å›0è¡¨ç¤ºåˆ›å»ºæˆåŠŸ,-1è¡¨ç¤ºå¤±è´¥,mkdir(path,mode)åˆ›å»ºç›®å½•,modeé»˜è®¤0777ï¼ˆå…è®¸å…¨å±€è®¿é—®ï¼‰
 		if (0 == mkdir(pathName.c_str()))
-			cout << "´´½¨³É¹¦" << endl;
+			cout << "åˆ›å»ºæˆåŠŸ" << endl;
 		else
-			cout << "´´½¨Ê§°Ü" << endl;
+			cout << "åˆ›å»ºå¤±è´¥" << endl;
 		return;
 	}
-	cout << "¸ÃÊı¾İ¿âÒÑ´æÔÚ" << endl;
+	cout << "è¯¥æ•°æ®åº“å·²å­˜åœ¨" << endl;
 }
 
-//É¾³ıÊı¾İ¿â
+//åˆ é™¤æ•°æ®åº“
 void myDBMS::myDropDataBase(string dataBaseName) {
-	string pathName = "C:\\Users\\stell\\Desktop\\Êı¾İ¿âÔ­Àí¿Î³ÌÉè¼ÆÎÄµµ202012\\DBMS\\" + dataBaseName;
-	if (0 == access(pathName.c_str(), 0)) {//Èç¹û²éÑ¯µ½¸ÃÊı¾İ¿â
-		pathName = "rd " + pathName;//rd:É¾³ıÄ¿Â¼
+	string pathName = "C:\\Users\\stell\\Desktop\\æ•°æ®åº“åŸç†è¯¾ç¨‹è®¾è®¡æ–‡æ¡£202012\\DBMS\\" + dataBaseName;
+	if (0 == access(pathName.c_str(), 0)) {//å¦‚æœæŸ¥è¯¢åˆ°è¯¥æ•°æ®åº“
+		pathName = "rd " + pathName;//rd:åˆ é™¤ç›®å½•
 		if (0 == system(pathName.c_str()))
-			cout << "É¾³ıÊı¾İ¿â" << dataBaseName << "³É¹¦" << endl;
+			cout << "åˆ é™¤æ•°æ®åº“" << dataBaseName << "æˆåŠŸ" << endl;
 		else
-			cout << "É¾³ıÊı¾İ¿â" << dataBaseName << "Ê§°Ü" << endl;
+			cout << "åˆ é™¤æ•°æ®åº“" << dataBaseName << "å¤±è´¥" << endl;
 		return;
 	}
-	cout << "Êı¾İ¿â" << dataBaseName << "²»´æÔÚ" << endl;
+	cout << "æ•°æ®åº“" << dataBaseName << "ä¸å­˜åœ¨" << endl;
 }
 
-//½¨Á¢±í,²ÎÊı:±íÃû
+//å»ºç«‹è¡¨,å‚æ•°:è¡¨å
 /*
-create table ±íÃû
+create table è¡¨å
 (
-ÁĞ1(×Ö¶Î)Ãû Êı¾İÀàĞÍ1(´óĞ¡:ÈôÎª1¿ÉÊ¡ÂÔ),
-ÁĞ2(×Ö¶Î)Ãû Êı¾İÀàĞÍ2(´óĞ¡:ÈôÎª1¿ÉÊ¡ÂÔ),
-¡­          ¡­
+åˆ—1(å­—æ®µ)å æ•°æ®ç±»å‹1(å¤§å°:è‹¥ä¸º1å¯çœç•¥),
+åˆ—2(å­—æ®µ)å æ•°æ®ç±»å‹2(å¤§å°:è‹¥ä¸º1å¯çœç•¥),
+â€¦          â€¦
 )
 */
 void myDBMS::myCreateTable(string tableName) {
-	vector<string>colName;//ÁĞÃû
-	vector<string>type;//ÀàĞÍ
-	vector<int>size;//´óĞ¡
+	vector<string>colName;//åˆ—å
+	vector<string>type;//ç±»å‹
+	vector<int>size;//å¤§å°
 	string tmp;
-	getchar();//¶Á£¨
-	//getline:¶ÁÈ¡ÕûĞĞ£¬°üÀ¨Ç°µ¼ºÍÇ¶ÈëµÄ¿Õ¸ñ£¬²¢½«Æä´æ´¢ÔÚ×Ö·û´®¶ÔÏóÖĞ
-	getline(cin, tmp);//¶Á£¨ÕâÒ»ĞĞ
-	getline(cin, tmp);//¶ÁÁĞÃû£¬×Ö¶ÎÃû
-	while (tmp != ")") {//µ±Ã»ÓĞ¶Áµ½×îºóÒ»ĞĞ
-		stringstream ss(tmp);//½«Êı¾İ´«µİ¸øÒ»¸östringstream ¶ÔÏó
+	getchar();//è¯»ï¼ˆ
+	//getline:è¯»å–æ•´è¡Œï¼ŒåŒ…æ‹¬å‰å¯¼å’ŒåµŒå…¥çš„ç©ºæ ¼ï¼Œå¹¶å°†å…¶å­˜å‚¨åœ¨å­—ç¬¦ä¸²å¯¹è±¡ä¸­
+	getline(cin, tmp);//è¯»ï¼ˆè¿™ä¸€è¡Œ
+	getline(cin, tmp);//è¯»åˆ—åï¼Œå­—æ®µå
+	while (tmp != ")") {//å½“æ²¡æœ‰è¯»åˆ°æœ€åä¸€è¡Œ
+		stringstream ss(tmp);//å°†æ•°æ®ä¼ é€’ç»™ä¸€ä¸ªstringstream å¯¹è±¡
 		string x;
-		ss >> x; colName.push_back(x);//Í¨¹ı¸Ãstringstream¶ÔÏó½«ÊıÖµ¸³¸øÒ»¸östring¶ÔÏó²¢¼Óµ½vectorµÄ×îºóÃæ
-		ss >> x;//ÔÙ´Î¸³Öµ
-		//Ê¶±ğ(´óĞ¡)
+		ss >> x; colName.push_back(x);//é€šè¿‡è¯¥stringstreamå¯¹è±¡å°†æ•°å€¼èµ‹ç»™ä¸€ä¸ªstringå¯¹è±¡å¹¶åŠ åˆ°vectorçš„æœ€åé¢
+		ss >> x;//å†æ¬¡èµ‹å€¼
+		//è¯†åˆ«(å¤§å°)
 		int pos = x.find('(');
-		if (pos == string::npos) {//find()ÔÚÕÒ²»µ½Ö¸¶¨ÖµµÄÇé¿öÏÂ»á·µ»Østring::npos
-			type.push_back(x);//Ã»ÓĞ(ÔòÖ±½Ó°Ñx¼Óµ½typeµÄ×îºóÃæ
-			size.push_back(1);//°ÑÄ¬ÈÏÖµ1¼Óµ½sizeµÄºóÃæ
+		if (pos == string::npos) {//find()åœ¨æ‰¾ä¸åˆ°æŒ‡å®šå€¼çš„æƒ…å†µä¸‹ä¼šè¿”å›string::npos
+			type.push_back(x);//æ²¡æœ‰(åˆ™ç›´æ¥æŠŠxåŠ åˆ°typeçš„æœ€åé¢
+			size.push_back(1);//æŠŠé»˜è®¤å€¼1åŠ åˆ°sizeçš„åé¢
 		}
-		else {//Èç¹û±ê×¢ÁË´óĞ¡
-			type.push_back(x.substr(0, pos));//°Ñµ½£¨Ö®Ç°µÄÄÚÈİ¼ÓÈëtype
+		else {//å¦‚æœæ ‡æ³¨äº†å¤§å°
+			type.push_back(x.substr(0, pos));//æŠŠåˆ°ï¼ˆä¹‹å‰çš„å†…å®¹åŠ å…¥type
 			int num = 0;
-			//°ÑstringĞÎÊ½µÄÊı×Ö×ª»»ÎªintĞÍ
+			//æŠŠstringå½¢å¼çš„æ•°å­—è½¬æ¢ä¸ºintå‹
 			for (int i = pos + 1; i < x.length() - 1; i++)
 				num = num * 10 + x[i] - '0';
-			size.push_back(num);//°Ñ´óĞ¡¼ÓÈësizeµÄ×îºó
+			size.push_back(num);//æŠŠå¤§å°åŠ å…¥sizeçš„æœ€å
 		}
-		getline(cin, tmp);//»ñÈ¡ÏÂÒ»ĞĞ
+		getline(cin, tmp);//è·å–ä¸‹ä¸€è¡Œ
 	}
 	tableName += ".txt";
-	string pathName = prePath + tableName;//Æ´½ÓÊı¾İ¿âµÄÎÄ¼şÂ·¾¶ºÍ±íÃû
+	string pathName = prePath + tableName;//æ‹¼æ¥æ•°æ®åº“çš„æ–‡ä»¶è·¯å¾„å’Œè¡¨å
 	//cout << pathName.c_str() << endl;
-	if (0 != access(pathName.c_str(), 0)) {//Èç¹ûÃ»ÓĞÕâ¸ö±í
-		Tables* ptr = new Tables;//ĞÂ½¨Ò»¸ö±íµÄ¶¯Ì¬¿Õ¼ä
+	if (0 != access(pathName.c_str(), 0)) {//å¦‚æœæ²¡æœ‰è¿™ä¸ªè¡¨
+		Tables* ptr = new Tables;//æ–°å»ºä¸€ä¸ªè¡¨çš„åŠ¨æ€ç©ºé—´
 		ptr->name = tableName;
 		ptr->pathName = pathName;
 		ptr->colName = colName;
@@ -200,93 +203,93 @@ void myDBMS::myCreateTable(string tableName) {
 		ptr->fp = fopen(pathName.c_str(), "w");
 		string wrin;
 		wrin.clear();
-		//½«¸Ã±íµÄ½á¹¹´æÔÚÒ»ĞĞÀï
+		//å°†è¯¥è¡¨çš„ç»“æ„å­˜åœ¨ä¸€è¡Œé‡Œ
 		for (int i = 0; i < colName.size(); i++)
-            //ÒÔ ÁĞÃû;ÀàĞÍ;´óĞ¡; µÄĞÎÊ½´æÈëÎÄ¼ş
+            //ä»¥ åˆ—å;ç±»å‹;å¤§å°; çš„å½¢å¼å­˜å…¥æ–‡ä»¶
 			wrin += colName[i] + ";" + type[i] + ";" + to_string(size[i]) + ";";
-		wrin += "\n";//»»ĞĞ
-		fprintf(ptr->fp,wrin.c_str());//Ğ´ÈëÎÄ¼ş
-		fclose(ptr->fp);//¹Ø±ÕÎÄ¼ş
-		tab.push_back(ptr);//ÔÚtableÈİÆ÷ÖĞ¼ÓÈëÕâ¸öĞÂ±í
-		cout << "´´½¨ĞÂ±í³É¹¦!" << endl;
+		wrin += "\n";//æ¢è¡Œ
+		fprintf(ptr->fp,wrin.c_str());//å†™å…¥æ–‡ä»¶
+		fclose(ptr->fp);//å…³é—­æ–‡ä»¶
+		tab.push_back(ptr);//åœ¨tableå®¹å™¨ä¸­åŠ å…¥è¿™ä¸ªæ–°è¡¨
+		cout << "åˆ›å»ºæ–°è¡¨æˆåŠŸ!" << endl;
 		return;
 	}
-	cout << "¸Ã±íÒÑ¾­´æÔÚ!" << endl;
+	cout << "è¯¥è¡¨å·²ç»å­˜åœ¨!" << endl;
 }
 
-//É¾³ı±í£¬²ÎÊı:±íÃû
+//åˆ é™¤è¡¨ï¼Œå‚æ•°:è¡¨å
 void myDBMS::myDropTable(string tableName) {
 	tableName += ".txt";
 	string pathName = prePath + tableName;
 	if (0 != access(pathName.c_str(), 0))
-		cout << "¸Ã±í²»´æÔÚ!" << endl;
+		cout << "è¯¥è¡¨ä¸å­˜åœ¨!" << endl;
 	else {
 		for (int i = 0; i < tab.size(); i++)
-			if (tab[i]->name == tableName) {//ÕÒµ½ÏàÓ¦µÄ±í
-			    //Èç¹û±í¿ª×Å¾Í¹Ø±ÕÎÄ¼şÈ»ºódeleteµô
+			if (tab[i]->name == tableName) {//æ‰¾åˆ°ç›¸åº”çš„è¡¨
+			    //å¦‚æœè¡¨å¼€ç€å°±å…³é—­æ–‡ä»¶ç„¶ådeleteæ‰
 				if (tab[i]->fp != NULL)
 					fclose(tab[i]->fp);
 				delete tab[i];
-                //´ÓtabÈİÆ÷ÖĞÉ¾³ı¸Ã±í
+                //ä»tabå®¹å™¨ä¸­åˆ é™¤è¯¥è¡¨
 				tab.erase(tab.begin() + i);
 			}
-		remove(pathName.c_str());//É¾³ı±í¶ÔÓ¦µÄÎÄ¼ş
-		cout << "É¾³ı³É¹¦!" << endl;
+		remove(pathName.c_str());//åˆ é™¤è¡¨å¯¹åº”çš„æ–‡ä»¶
+		cout << "åˆ é™¤æˆåŠŸ!" << endl;
 	}
 }
 
-//¸¨Öúº¯Êı,²ÎÊı£º±íÃû
+//è¾…åŠ©å‡½æ•°,å‚æ•°ï¼šè¡¨å
 int myDBMS::posIsNos(string tableName) {
 	string pathName = prePath + tableName + ".txt";
 	if (0 != access(pathName.c_str(), 0)) {
-		cout << "¸Ã±í²»´æÔÚ!" << endl;
+		cout << "è¯¥è¡¨ä¸å­˜åœ¨!" << endl;
 		return -1;
 	}
-	//ÒÔ¶ÁµÄĞÎÊ½´ò¿ª±í
+	//ä»¥è¯»çš„å½¢å¼æ‰“å¼€è¡¨
 	FILE* tempfptr = fopen(pathName.c_str(), "r");
 	char contant[100];
 	fscanf(tempfptr, "%s", contant);
 	string tmp = contant;
-	//°Ñ;¸ÄÎª¡® ¡¯
+	//æŠŠ;æ”¹ä¸ºâ€˜ â€™
 	for (int i = 0; i < tmp.size(); i++)
 		if (tmp[i] == ';')
 			tmp[i] = ' ';
 	stringstream check(tmp);
-	string x, y, z;//x:ÁĞÃû y:ÀàĞÍ z:´óĞ¡
-	Tables* nxt = new Tables;//ĞÂ½¨Ò»¸ö¶¯Ì¬±ínxt
-	nxt->name = tableName;//¸³Öµ±íÃû
+	string x, y, z;//x:åˆ—å y:ç±»å‹ z:å¤§å°
+	Tables* nxt = new Tables;//æ–°å»ºä¸€ä¸ªåŠ¨æ€è¡¨nxt
+	nxt->name = tableName;//èµ‹å€¼è¡¨å
 	while (check >> x) {
 		check >> y >> z;
 		nxt->colName.push_back(x);
 		nxt->type.push_back(y);
-		nxt->size.push_back(atoi(z.c_str()));//atoi():°Ñstring×ª»»Îªint
+		nxt->size.push_back(atoi(z.c_str()));//atoi():æŠŠstringè½¬æ¢ä¸ºint
 	}
 	nxt->pathName = pathName;
 	tab.push_back(nxt);//
-	fclose(tempfptr);//¹Ø±ÕÎÄ¼ş
+	fclose(tempfptr);//å…³é—­æ–‡ä»¶
 	return tab.size() - 1;
 }
 
-//²åÈëÊı¾İ,²ÎÊı:±íÃû,
-//insert into ±íÃû(field1,field2,¡­) values(value1,value2,¡­)
+//æ’å…¥æ•°æ®,å‚æ•°:è¡¨å,
+//insert into è¡¨å(field1,field2,â€¦) values(value1,value2,â€¦)
 //insert into student(Sno,Sname) values(100,wang)
 void myDBMS::myInsert(string tableName,string value) {
-	if (!open) {//Èç¹ûÃ»ÓĞÊı¾İ¿â´ò¿ª
-		cout << "ÎŞÑ¡ÖĞÊı¾İ¿â!" << endl;
+	if (!open) {//å¦‚æœæ²¡æœ‰æ•°æ®åº“æ‰“å¼€
+		cout << "æ— é€‰ä¸­æ•°æ®åº“!" << endl;
 		return;
 	}
 	int pos = inf;
-	for (int i = 0; i < tab.size(); i++)//¶¨Î»±íÔÚÈİÆ÷ÖĞµÄÎ»ÖÃ
+	for (int i = 0; i < tab.size(); i++)//å®šä½è¡¨åœ¨å®¹å™¨ä¸­çš„ä½ç½®
 		if (tab[i]->name == tableName) {
 			pos = i; break;
 		}
-	if (pos == inf)//Èç¹ûÃ»ÓĞÕÒµ½±í
+	if (pos == inf)//å¦‚æœæ²¡æœ‰æ‰¾åˆ°è¡¨
 		pos = posIsNos(tableName);
 	if (pos == -1)return;
 	stringstream ss(value);
-	tab[pos]->fp = fopen(tab[pos]->pathName.c_str(), "a");//´ò¿ª±í
+	tab[pos]->fp = fopen(tab[pos]->pathName.c_str(), "a");//æ‰“å¼€è¡¨
 	for (int i = 0; i < tab[pos]->type.size(); i++) {
-		string tmp = tab[pos]->type[i];//°ÑÀàĞÍ¸³¸øtmp
+		string tmp = tab[pos]->type[i];//æŠŠç±»å‹èµ‹ç»™tmp
 		//cout << "tmp:" << tmp << endl;
 		if (tmp == "int") {
 			int x; ss >> x;
@@ -316,16 +319,16 @@ void myDBMS::myInsert(string tableName,string value) {
 		if (i != tab[pos]->type.size() - 1)
 			fprintf(tab[pos]->fp, "%c", ' ');
 	}
-	fprintf(tab[pos]->fp, "%c", '\n');//»»ĞĞ
+	fprintf(tab[pos]->fp, "%c", '\n');//æ¢è¡Œ
 	fclose(tab[pos]->fp);
-	cout << "²åÈë³É¹¦!" << endl;
+	cout << "æ’å…¥æˆåŠŸ!" << endl;
 }
 
-//É¾³ıÊı¾İ
-//delete from ±íÃû where ÁĞÃû = Öµ(Öµ¿ÉÎªall,±íÈ«²¿·¶Î§)
+//åˆ é™¤æ•°æ®
+//delete from è¡¨å where åˆ—å = å€¼(å€¼å¯ä¸ºall,è¡¨å…¨éƒ¨èŒƒå›´)
 void myDBMS::myDelete(string tableName,string isWhere) {
 	if (!open) {
-		cout << "ÎŞÑ¡ÖĞÊı¾İ¿â!" << endl;
+		cout << "æ— é€‰ä¸­æ•°æ®åº“!" << endl;
 		return;
 	}
 	int pos = inf;
@@ -342,7 +345,7 @@ void myDBMS::myDelete(string tableName,string isWhere) {
 	ss >> whr >> typeName >> deng >> toValue;
 	for (int i = 0; i < tab[pos]->colName.size(); i++) {
 		//cout << " " << tab[pos]->colName[i] << endl;
-		if (tab[pos]->colName[i] == typeName) {//ÁĞÃûÏàµÈ
+		if (tab[pos]->colName[i] == typeName) {//åˆ—åç›¸ç­‰
 			wherePos = i;
 			break;
 		}
@@ -353,15 +356,15 @@ void myDBMS::myDelete(string tableName,string isWhere) {
 	tab[pos]->fp = fopen(tab[pos]->pathName.c_str(), "r");
 	fgets(sentence, 1024, tab[pos]->fp);
 	fputs(sentence, tmpfptr);
-	//ÅĞ¶ÏÊÇ·ñÎªall
+	//åˆ¤æ–­æ˜¯å¦ä¸ºall
 	bool flag = true;
 	bool aru = false;
 	if (toValue.length() == 3 && tolower(toValue[0]) == 'a' && tolower(toValue[1]) == 'l' && tolower(toValue[2]) == 'l')
 		flag = false;
-    //×ÜÌåË¼Â·ÊÇĞÂ½¨Ò»¸ö±ítmp.txt£¬ÀïÃæ´æ·Å³ı·ûºÏwhereÌõ¼şÒÔÍâµÄ¼ÇÂ¼£¬È»ºó¶Ôtmp.txt¸ÄÃû£¬²¢ÒÆ³ıÔ­À´µÄÎÄ¼ş
+    //æ€»ä½“æ€è·¯æ˜¯æ–°å»ºä¸€ä¸ªè¡¨tmp.txtï¼Œé‡Œé¢å­˜æ”¾é™¤ç¬¦åˆwhereæ¡ä»¶ä»¥å¤–çš„è®°å½•ï¼Œç„¶åå¯¹tmp.txtæ”¹åï¼Œå¹¶ç§»é™¤åŸæ¥çš„æ–‡ä»¶
 	if (flag) {
 		while (!feof(tab[pos]->fp)) {
-			memset(sentence, 0, sizeof(sentence));//sentence³õÊ¼»¯Îª0
+			memset(sentence, 0, sizeof(sentence));//sentenceåˆå§‹åŒ–ä¸º0
 			fgets(sentence, 1024, tab[pos]->fp);
 			stringstream myTmp(sentence);
 			//cout << "sentence " << sentence << endl;
@@ -379,18 +382,18 @@ void myDBMS::myDelete(string tableName,string isWhere) {
 	fclose(tab[pos]->fp);
 	remove(tab[pos]->pathName.c_str());
 	if(aru==false)
-        cout << "Ó°Ïì0Ìõ¼ÇÂ¼" <<endl;
+        cout << "å½±å“0æ¡è®°å½•" <<endl;
     if (0 == rename(pathName2.c_str(), tab[pos]->pathName.c_str()))
-        cout << "É¾³ı³É¹¦!" << endl;
+        cout << "åˆ é™¤æˆåŠŸ!" << endl;
     else
-        cout << "É¾³ıÊ§°Ü!" << endl;
+        cout << "åˆ é™¤å¤±è´¥!" << endl;
 }
 
-//¸üĞÂÊı¾İ
-//update ÁĞÃû = ĞÂÖµ from ±íÃû where ÁĞÃû = Öµ(Öµ¿ÉÎªall,±íÈ«²¿·¶Î§)
+//æ›´æ–°æ•°æ®
+//update åˆ—å = æ–°å€¼ from è¡¨å where åˆ—å = å€¼(å€¼å¯ä¸ºall,è¡¨å…¨éƒ¨èŒƒå›´)
 void myDBMS::myUpdate(string tableName, string toColName,string newValue, string isWhere) {
 	if (!open) {
-		cout << "ÎŞÑ¡ÖĞÊı¾İ¿â!" << endl;
+		cout << "æ— é€‰ä¸­æ•°æ®åº“!" << endl;
 		return;
 	}
 	int pos = inf;
@@ -405,12 +408,12 @@ void myDBMS::myUpdate(string tableName, string toColName,string newValue, string
 	int wherePos = inf, updataPos = inf;
 	string typeName, toValue, whr, deng;
 	ss >> whr >> typeName >> deng >> toValue;
-	for (int i = 0; i < tab[pos]->colName.size(); i++) //ÕÒµ½·¶Î§¶ÔÓ¦µÄcolNameÏÂ±ê
+	for (int i = 0; i < tab[pos]->colName.size(); i++) //æ‰¾åˆ°èŒƒå›´å¯¹åº”çš„colNameä¸‹æ ‡
 		if (tab[pos]->colName[i] == typeName) {
 			wherePos = i;
 			break;
 		}
-	for (int i = 0; i < tab[pos]->colName.size(); i++) //ÕÒµ½ĞèÒªĞŞ¸ÄµÄcolNameÏÂ±ê
+	for (int i = 0; i < tab[pos]->colName.size(); i++) //æ‰¾åˆ°éœ€è¦ä¿®æ”¹çš„colNameä¸‹æ ‡
 		if (tab[pos]->colName[i] == toColName) {
 			updataPos = i;
 			break;
@@ -421,11 +424,11 @@ void myDBMS::myUpdate(string tableName, string toColName,string newValue, string
 	tab[pos]->fp = fopen(tab[pos]->pathName.c_str(), "r");
 	fgets(sentence, 1024, tab[pos]->fp);
 	fputs(sentence, tmpfptr);
-	//¶ÁÔ­ÎÄ¼şµÄÄÚÈİ·Åµ½ĞÂÎÄ¼ş
+	//è¯»åŸæ–‡ä»¶çš„å†…å®¹æ”¾åˆ°æ–°æ–‡ä»¶
 	bool flag = true;
 	if (toValue.length() == 3 && tolower(toValue[0]) == 'a' && tolower(toValue[1]) == 'l' && tolower(toValue[2]) == 'l')
 		flag = false;
-	if (!flag) {//È«²¿ĞŞ¸Ä
+	if (!flag) {//å…¨éƒ¨ä¿®æ”¹
 		while (!feof(tab[pos]->fp)) {
 			for (int i = 0; i < tab[pos]->type.size(); i++) {
 				string tmp = tab[pos]->type[i];
@@ -451,7 +454,7 @@ void myDBMS::myUpdate(string tableName, string toColName,string newValue, string
 				else if (tmp == "char") {
 					if (tab[pos]->size[i] == 1) {
 						char x; fscanf(tab[pos]->fp, "%c", &x);
-						if (i == updataPos)//Èç¹ûÊÇÒªĞŞ¸ÄµÄÁĞ
+						if (i == updataPos)//å¦‚æœæ˜¯è¦ä¿®æ”¹çš„åˆ—
 							x = newValue[0];
 						fprintf(tmpfptr, "%c", x);
 					}
@@ -467,13 +470,13 @@ void myDBMS::myUpdate(string tableName, string toColName,string newValue, string
 						delete x;
 					}
 				}
-				if (i != tab[pos]->type.size() - 1)//Èç¹û²»ÊÇ×îºóÒ»ÏîÊäÈë¿Õ¸ñ
+				if (i != tab[pos]->type.size() - 1)//å¦‚æœä¸æ˜¯æœ€åä¸€é¡¹è¾“å…¥ç©ºæ ¼
 					fprintf(tmpfptr, "%c", ' ');
 			}
 			fprintf(tmpfptr, "%c", '\n');
 		}
 	}
-	else {//·¶Î§ÄÚĞŞ¸Ä
+	else {//èŒƒå›´å†…ä¿®æ”¹
 		while (!feof(tab[pos]->fp)) {
 			memset(sentence, 0, sizeof(sentence));
 			fgets(sentence, 1024, tab[pos]->fp);
@@ -507,15 +510,15 @@ void myDBMS::myUpdate(string tableName, string toColName,string newValue, string
 	fclose(tab[pos]->fp);
 	remove(tab[pos]->pathName.c_str());
 	if (0 == rename(pathName2.c_str(), tab[pos]->pathName.c_str()))
-		cout << "¸üĞÂ³É¹¦!" << endl;
+		cout << "æ›´æ–°æˆåŠŸ!" << endl;
 	else
-		cout << "¸üĞÂÊ§°Ü!" << endl;
+		cout << "æ›´æ–°å¤±è´¥!" << endl;
 }
 
-//²éÑ¯Êı¾İ
+//æŸ¥è¯¢æ•°æ®
 void myDBMS::myQuery(string toColName, string tableName, string isWhere = "") {
 	if (!open) {
-		cout << "ÎŞÑ¡ÖĞÊı¾İ¿â!" << endl;
+		cout << "æ— é€‰ä¸­æ•°æ®åº“!" << endl;
 		return;
 	}
 	int pos = inf;
@@ -528,36 +531,35 @@ void myDBMS::myQuery(string toColName, string tableName, string isWhere = "") {
 	if (pos == -1)return;
 
 	tab[pos]->fp = fopen(tab[pos]->pathName.c_str(), "r");
-	char contant[1024];
+	char contant[MAX_SIZE];
 	fgets(contant, sizeof(contant), tab[pos]->fp);
 
-	if (isWhere == "") {//È«Êä³ö
+	if (isWhere == "") {//å…¨è¾“å‡º
 		int len = strlen(contant);
 		for (int i = 0; i < len; i++)
 			if (contant[i] == ';')
 				contant[i] = ' ';
 		stringstream tmp(toColName);
 		string x,y;
-		int *sign,j,*ptr,num=0;
-		ptr = sign;
+		int sign[20],j,num=0;
 		while(tmp>>y){
             //cout<<"y:"<<y<<endl;
             stringstream ss(contant);
-            for (int v = 0; v < tab[pos]->size.size(); v++) {//ÏÈÊä³öcolNames
+            for (int v = 0; v < tab[pos]->size.size(); v++) {//å…ˆè¾“å‡ºcolNames
                 ss >> x;
+                //cout<<x<<y<<endl;
                 if(x == y){
-                    //È·¶¨Êä³öÊı¾İÏÔÊ¾µÄ¿í¶È
+                    //ç¡®å®šè¾“å‡ºæ•°æ®æ˜¾ç¤ºçš„å®½åº¦
                     int width = 15;
                     if (tab[pos]->size[v] != 1)
                     width = tab[pos]->size[v];
-                    cout << left << setw(width) << x;//×ó¶ÔÆë²¢ÉèÖÃ¿í¶ÈÊä³ö
-                    *sign = v;
+                    cout << left << setw(width) << x;//å·¦å¯¹é½å¹¶è®¾ç½®å®½åº¦è¾“å‡º
+                    sign[num] = v;
                     //cout<<"sign:"<<*sign<<' ';
-                    sign++;
                     num++;
                 }
-                ss >> x;//ÀàĞÍ
-                ss >> x;//´óĞ¡
+                ss >> x;//ç±»å‹
+                ss >> x;//å¤§å°
             }
 		}
 		cout << endl;
@@ -566,13 +568,16 @@ void myDBMS::myQuery(string toColName, string tableName, string isWhere = "") {
 		while(!feof(tab[pos]->fp)) {
 			memset(contant, 0, sizeof(contant));
 			fgets(contant, sizeof(contant), tab[pos]->fp);
-			if (strlen(contant) == 0)break;
+			if (strlen(contant) == 0){
+                break;
+			}
 			stringstream out(contant);
 			string x;
-			int i,n=num,*tk=ptr;
+			int i,n=num,j=0;
 			for(i=0;i<tab[pos]->type.size(),n!=0;i++) {
                 out >> x;
-                if(i==*tk){
+                //cout<<x<<" ";
+                if(i==sign[j]){
                     int width = 15;
                     if (tab[pos]->size[i] != 1)
                         width = tab[pos]->size[i];
@@ -584,14 +589,14 @@ void myDBMS::myQuery(string toColName, string tableName, string isWhere = "") {
                         cout << left << setw(width) << atof(x.c_str());
                     else if (tmp == "char")
                         cout << left << setw(width) << x;
-                    tk++;
+                    j++;
                     n--;
                 }
 			}
 			cout << endl;
 		}
 	}
-	else {//²¿·ÖÊä³ö
+	else {//éƒ¨åˆ†è¾“å‡º
 		stringstream ss(isWhere);
 		int aimPos = inf;
 		int pcolName[20];
@@ -627,7 +632,7 @@ void myDBMS::myQuery(string toColName, string tableName, string isWhere = "") {
 			memset(contant, 0, sizeof(contant));
 			fgets(contant, sizeof(contant), tab[pos]->fp);
 			stringstream myTmp(contant);
-			string x, check, out;//out:´æ·ÅĞèÒªÊä³öµÄÁĞ
+			string x, check, out;//out:å­˜æ”¾éœ€è¦è¾“å‡ºçš„åˆ—
 			j = 0;
 			for (int i = 0; i < tab[pos]->colName.size(); i++) {
 				myTmp >> x;
@@ -663,10 +668,10 @@ void myDBMS::myQuery(string toColName, string tableName, string isWhere = "") {
 	fclose(tab[pos]->fp);
 }
 
-//»ñÈ¡ËùÓĞÁĞÃû
+//è·å–æ‰€æœ‰åˆ—å
 string myDBMS::get_toColName(string tableName){
     if (!open) {
-		cout << "ÎŞÑ¡ÖĞÊı¾İ¿â!" << endl;
+		cout << "æ— é€‰ä¸­æ•°æ®åº“!" << endl;
         exit(1);
 	}
 	int pos = inf;
@@ -676,7 +681,7 @@ string myDBMS::get_toColName(string tableName){
 		}
 	if (pos == inf)
 		pos = posIsNos(tableName);
-	if (pos == -1)exit(1);
+	if (pos == -1)return "";
 
 	tab[pos]->fp = fopen(tab[pos]->pathName.c_str(), "r");
 	char contant[1024];
@@ -700,6 +705,146 @@ string myDBMS::get_toColName(string tableName){
     return toColName;
 }
 
+void myDBMS::productImplement(vector<vector<string>> dimvalue,vector<vector<string>> &res,int layer,vector<string> tmp){
+    if (layer < dimvalue.size() - 1){
+		for (int i = 0; i < dimvalue[layer].size(); i++){//å¯¹æ¯ä¸€ä¸ªå®¹å™¨
+			vector<string> sb;//æ–°å»ºä¸€ä¸ªå®¹å™¨sb
+			sb.clear();//æ¸…ç©ºå®¹å™¨
+
+			for (int i = 0; i < tmp.size(); i++){
+					sb.push_back(tmp[i]);
+			}
+			sb.push_back(dimvalue[layer][i]);
+			productImplement(dimvalue, res, layer+1,sb);
+		}
+	}
+	else if (layer == dimvalue.size()-1){
+		for (int j = 0; j < dimvalue[layer].size();j++){
+            tmp.push_back(dimvalue[layer][j]);
+			res.push_back(tmp);
+			tmp.pop_back();
+		}
+	}
+}
+
+void myDBMS::connect(string tableName1,string tableName2){
+    if (!open) {
+		cout << "æ— é€‰ä¸­æ•°æ®åº“!" << endl;
+		return;
+	}
+	int pos1 = inf, pos2 = inf;
+	for (int i = 0; i < tab.size(); i++)
+		if (tab[i]->name == tableName1) {
+			pos1 = i; break;
+		}
+	if (pos1 == inf)
+		pos1 = posIsNos(tableName1);
+	if (pos1 == -1)return;
+
+	for (int i = 0; i < tab.size(); i++)
+		if (tab[i]->name == tableName2) {
+			pos2 = i; break;
+		}
+	if (pos2 == inf)
+		pos2 = posIsNos(tableName2);
+	if (pos2 == -1)return;
+
+	vector<string> t1,t2;
+	char contant[1024];
+	int num[40];
+	int n = 0;
+
+	tab[pos1]->fp = fopen(tab[pos1]->pathName.c_str(), "r");
+	fgets(contant, sizeof(contant), tab[pos1]->fp);
+	for(int i=0;i<strlen(contant);i++){
+        if(contant[i]==';')contant[i]=' ';
+	}
+	stringstream ss1(contant);
+	string str1;
+	for (int v = 0; v < tab[pos1]->size.size(); v++){
+        ss1 >> str1;
+        int width = 15;
+        if (tab[pos1]->size[v] != 1)
+            width = tab[pos1]->size[v];
+        //cout<<width;
+        cout << left << setw(width) << str1;//å·¦å¯¹é½å¹¶è®¾ç½®å®½åº¦è¾“å‡º
+        ss1 >> str1;//ç±»å‹
+        ss1 >> str1;//å¤§å°
+        num[n] = atoi(str1.c_str());
+        n++;
+	}
+	while (!feof(tab[pos1]->fp)){
+        memset(contant, 0, sizeof(contant));
+        fgets(contant, sizeof(contant), tab[pos1]->fp);
+        if (strlen(contant) == 0)break;
+        for(int i=0;i<strlen(contant);i++){
+            if(contant[i]==';')contant[i]=' ';
+        }
+        string x(contant);
+        x=x.substr(0,strlen(contant)-1);
+        x=x+" ";
+        t1.push_back(x);
+	}
+	fclose(tab[pos1]->fp);
+
+	tab[pos2]->fp = fopen(tab[pos2]->pathName.c_str(), "r");
+	fgets(contant, sizeof(contant), tab[pos2]->fp);
+	for(int i=0;i<strlen(contant);i++){
+        if(contant[i]==';')contant[i]=' ';
+	}
+	stringstream ss2(contant);
+	string str2;
+	for (int v = 0; v < tab[pos2]->size.size(); v++){
+        ss2 >> str2;
+        int width = 15;
+        if (tab[pos1]->size[v] != 1)
+            width = tab[pos1]->size[v];
+        //cout<<width;
+        cout << left << setw(width) << str2;//å·¦å¯¹é½å¹¶è®¾ç½®å®½åº¦è¾“å‡º
+        ss2 >> str2;//ç±»å‹
+        ss2 >> str2;//å¤§å°
+        num[n] = atoi(str2.c_str());
+        n++;
+	}
+	while (!feof(tab[pos2]->fp)){
+        memset(contant, 0, sizeof(contant));
+        fgets(contant, sizeof(contant), tab[pos2]->fp);
+        if (strlen(contant) == 0)break;
+        for(int i=0;i<strlen(contant);i++){
+            if(contant[i]==';')contant[i]=' ';
+        }
+        string x(contant);
+        x=x.substr(0,strlen(contant)-1);
+        x=x+" ";
+        t2.push_back(x);
+	}
+	fclose(tab[pos2]->fp);
+	cout<<endl;
+
+	vector<vector<string>> dimvalue;
+	dimvalue.push_back(t1);
+	dimvalue.push_back(t2);
+	vector<string> tmp;
+	vector<vector<string>> res;
+
+	int layer = 0, k;
+	productImplement(dimvalue, res, layer, tmp);
+	for (int i = 0; i < res.size(); i++){
+	    k=0;
+		for (int j = 0; j < res[i].size(); j++){
+            //cout<<res[i][j]<<endl;
+            stringstream ss(res[i][j]);
+            string x;
+            if(num[k]<15)num[k]=15;
+            while(ss>>x){
+                cout << std::left << setw(num[k]) << x ;
+                k++;
+            }
+		}
+		cout << endl;
+	}
+}
+
 int main(void) {
 	myDBMS db;
 	while (cin >> db.cmd) {
@@ -715,7 +860,7 @@ int main(void) {
 				db.myCreateDataBase(name);
 			else if (db.cmd == "table")
 				db.myCreateTable(name);
-			else cout << "ÃüÁîÓï¾äÓĞÎó!" << endl;
+			else cout << "å‘½ä»¤è¯­å¥æœ‰è¯¯!" << endl;
 		}
 		else if (db.cmd == "drop") {
 			string name;
@@ -725,7 +870,7 @@ int main(void) {
 				db.myDropDataBase(name);
 			else if (db.cmd == "table")
 				db.myDropTable(name);
-			else cout << "ÃüÁîÓï¾äÓĞÎó!" << endl;
+			else cout << "å‘½ä»¤è¯­å¥æœ‰è¯¯!" << endl;
 		}
 		else if (db.cmd == "open") {
 			string name;
@@ -738,10 +883,10 @@ int main(void) {
 			db.transfer();
 			if (db.cmd == "database")
 				db.closeDataBase();
-			else cout << "ÃüÁîÓï¾äÓĞÎó!" << endl;
+			else cout << "å‘½ä»¤è¯­å¥æœ‰è¯¯!" << endl;
 		}
 		else if (db.cmd == "insert") {
-			//insert into ±íÃû(field1,field2,¡­) values(value1,value2,¡­)"
+			//insert into è¡¨å(field1,field2,â€¦) values(value1,value2,â€¦)"
 			string tmp, name, value;
 			cin >> db.cmd >> name >> tmp;
 			value = tmp.substr(7);
@@ -754,7 +899,7 @@ int main(void) {
 			db.myInsert(name.substr(0, pos), value);
 		}
 		else if (db.cmd == "delete") {
-			//delete from ±íÃû where ·¶Î§
+			//delete from è¡¨å where èŒƒå›´
 			string name;
 			cin >> db.cmd >> name;
 			string isWhere;
@@ -762,15 +907,15 @@ int main(void) {
 			db.myDelete(name, isWhere);
 		}
 		else if (db.cmd == "update") {
-			//update ÁĞÃû = ĞÂÖµ from ±íÃû where ÁĞÃû = Öµ(Öµ¿ÉÎªall, ±íÈ«²¿·¶Î§)
+			//update åˆ—å = æ–°å€¼ from è¡¨å where åˆ—å = å€¼(å€¼å¯ä¸ºall, è¡¨å…¨éƒ¨èŒƒå›´)
 			string toColName,deng, newValue, tableName, isWhere;
 			cin >> toColName >> deng >> newValue >> db.cmd >> tableName;
 			getline(cin, isWhere);
 			db.myUpdate(tableName, toColName, newValue, isWhere);
 		}
 		else if (db.cmd == "select") {
-			//"²é¿´È«±í  : select all from ±íÃû"
-			//"²éÑ¯µ¥Öµ  : select ÁĞÃû from ±íÃû where ÁĞÃû = Öµ(Öµ¿ÉÎªall,±íÈ«²¿·¶Î§)"
+			//"æŸ¥çœ‹å…¨è¡¨  : select all from è¡¨å"
+			//"æŸ¥è¯¢å•å€¼  : select åˆ—å from è¡¨å where åˆ—å = å€¼(å€¼å¯ä¸ºall,è¡¨å…¨éƒ¨èŒƒå›´)"
 			string toColName, tableName;
 			cin >> toColName >> db.cmd >> tableName;
             string isWhere;
@@ -785,11 +930,16 @@ int main(void) {
             //cout<<toColName<<"end"<<endl;
             db.myQuery(toColName, tableName, isWhere);
 		}
+		else if(db.cmd == "connect"){
+            db.connect("student","sc");
+		}
 		else {
 			string tmp;
 			getline(cin, tmp);
-			cout << "ÊäÈëÃüÁî´íÎó,Çë¼ì²é!" << endl;
+			cout << "è¾“å…¥å‘½ä»¤é”™è¯¯,è¯·æ£€æŸ¥!" << endl;
 		}
+
 	}
 	return 0;
 }
+//select all from student,course
