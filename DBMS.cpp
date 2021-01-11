@@ -388,7 +388,7 @@ void myDBMS::myInsertwithCol(string tableName,string fieldname,string value) {
 			}
 		}
 		if(flag==0){
-			fprintf(tab[pos]->fp," ");
+			fprintf(tab[pos]->fp,"null");
 		}
 		if (i != tab[pos]->type.size() - 1){
 			fprintf(tab[pos]->fp, "%c", ' ');
