@@ -10,7 +10,7 @@
 #include <io.h>
 
 #include <fstream>
-
+#define MAX_SIZE 1000000
 using namespace std;
 
 const int inf = 0x3f3f3f3f;//int型整数的最大值
@@ -76,9 +76,14 @@ public:
 	void myCreateTable(string); //创建表
 	void myDropTable(string); //删除表
 	void myInsert(string,string); //插入数据
+	void myInsertwithCol(string,string,string); //插入数据(带列名)
 	void myDelete(string,string); //删除数据
 	void myUpdate(string, string, string, string); //更新数据
 	void myQuery(string, string, string); //查询数据
+	void connect(string,string);
+	void productImplement(vector<vector<string>> dimvalue,vector<vector<string>> &res,int,vector<string> tmp);
+	string get_toColName(string);//获取toColName
+
 
 	int posIsNos(string);//辅助函数
 };
@@ -135,10 +140,10 @@ void myDBMS::myCreateDataBase(string dataBaseName) {
 
 //删除数据库
 void myDBMS::myDropDataBase(string dataBaseName) {
-	string pathName = "C:\\Users\\stell\\Desktop\\数据库原理课程设计文档202012\\DBMS\\" + dataBaseName;
+	string pathName = "E:\\CS346\\DBMS_Course_Desgin\\DB\\" + dataBaseName;
 	if (0 == access(pathName.c_str(), 0)) {//如果查询到该数据库
 		pathName = "rd " + pathName;//rd:删除目录
-		if (0 == system(pathName.c_str()))
+		if (0 == system(pathName.c_str()))//system(),发出一个dos命令，这里rd命令为删除指令，返回值为0或-1
 			cout << "删除数据库" << dataBaseName << "成功" << endl;
 		else
 			cout << "删除数据库" << dataBaseName << "失败" << endl;
@@ -161,17 +166,18 @@ void myDBMS::myCreateTable(string tableName) {
 	vector<string>type;//类型
 	vector<int>size;//大小
 	string tmp;
-	getchar();//读（
+	getchar();//读去回车
 	//getline:读取整行，包括前导和嵌入的空格，并将其存储在字符串对象中
 	getline(cin, tmp);//读（这一行
 	getline(cin, tmp);//读列名，字段名
 	while (tmp != ")") {//当没有读到最后一行
 		stringstream ss(tmp);//将数据传递给一个stringstream 对象
 		string x;
-		ss >> x; colName.push_back(x);//通过该stringstream对象将数值赋给一个string对象并加到vector的最后面
+		ss >> x; 
+		colName.push_back(x);//通过该stringstream对象将数值赋给一个string对象并加到vector的最后面
 		ss >> x;//再次赋值
 		//识别(大小)
-		int pos = x.find('(');
+		int pos = x.find('(');//find返回的是索引，寻找的是流中标注长度的左括号
 		if (pos == string::npos) {//find()在找不到指定值的情况下会返回string::npos
 			type.push_back(x);//没有(则直接把x加到type的最后面
 			size.push_back(1);//把默认值1加到size的后面
@@ -186,7 +192,7 @@ void myDBMS::myCreateTable(string tableName) {
 		}
 		getline(cin, tmp);//获取下一行
 	}
-	tableName += ".txt";
+	tableName += ".txt";//将表存为.TXT文件
 	string pathName = prePath + tableName;//拼接数据库的文件路径和表名
 	//cout << pathName.c_str() << endl;
 	if (0 != access(pathName.c_str(), 0)) {//如果没有这个表
@@ -227,7 +233,7 @@ void myDBMS::myDropTable(string tableName) {
 					fclose(tab[i]->fp);
 				delete tab[i];
                 //从tab容器中删除该表
-				tab.erase(tab.begin() + i);
+				tab.erase(tab.begin() + i);//删除该位置tables，容器位置前移
 			}
 		remove(pathName.c_str());//删除表对应的文件
 		cout << "删除成功!" << endl;
@@ -249,7 +255,7 @@ int myDBMS::posIsNos(string tableName) {
 	//把;改为‘ ’
 	for (int i = 0; i < tmp.size(); i++)
 		if (tmp[i] == ';')
-			tmp[i] = ' ';
+			tmp[i] = ' ';//核心代码，将表的关系模式部分;分隔符改为空格
 	stringstream check(tmp);
 	string x, y, z;//x:列名 y:类型 z:大小
 	Tables* nxt = new Tables;//新建一个动态表nxt
@@ -286,10 +292,10 @@ void myDBMS::myInsert(string tableName,string value) {
 	tab[pos]->fp = fopen(tab[pos]->pathName.c_str(), "a");//打开表
 	for (int i = 0; i < tab[pos]->type.size(); i++) {
 		string tmp = tab[pos]->type[i];//把类型赋给tmp
-		//cout << "tmp:" << tmp << endl;
+		//cout <<tab[pos]->colName[i]<< "tmp:" << tmp << endl;
 		if (tmp == "int") {
 			int x; ss >> x;
-			fprintf(tab[pos]->fp, "%d", x);
+			fprintf(tab[pos]->fp, "%d", x);//插入用了强制转换
 		}
 		else if (tmp == "float") {
 			float x; ss >> x;
@@ -320,6 +326,78 @@ void myDBMS::myInsert(string tableName,string value) {
 	cout << "插入成功!" << endl;
 }
 
+void myDBMS::myInsertwithCol(string tableName,string fieldname,string value) {
+	vector<string>fieldlist;
+	vector<string>valuelist;
+	int flag;
+	if (!open) {//如果没有数据库打开
+		cout << "无选中数据库!" << endl;
+		return;
+	}
+	int pos = inf;
+	for (int i = 0; i < tab.size(); i++)//定位表在容器中的位置
+		if (tab[i]->name == tableName) {
+			pos = i; break;
+		}
+	if (pos == inf)//如果没有找到表
+		pos = posIsNos(tableName);
+	if (pos == -1)return;
+	stringstream ss(value);
+	stringstream ssfield(fieldname);
+	string singlefield,singlevalue;
+	while(ssfield >> singlefield){
+		fieldlist.push_back(singlefield);
+		ss >> singlevalue;
+		valuelist.push_back(singlevalue);
+	}
+	//cout<<fieldlist[2]<<endl;
+	/*for(int i=0;i<fieldlist.size();i++){
+		cout<<fieldlist[i]<<endl;
+		cout<<valuelist[i]<<endl;
+	}*/
+	tab[pos]->fp = fopen(tab[pos]->pathName.c_str(), "a");//打开表
+	for (int i = 0; i < tab[pos]->type.size(); i++) {
+		string tmp = tab[pos]->type[i];//把类型赋给tmp
+		//cout << "tmp:" << tmp << endl;
+		flag=0;
+		for(int j=0;j<fieldlist.size();j++){
+			if(tab[pos]->colName[i]==fieldlist[j]){
+				//cout<<valuelist[j]<<endl;
+				flag=1;
+				//cout<<"break"<<endl;
+				if(tmp=="int"){
+					int x=std::stoi(valuelist[j]);
+					//cout<<x<<endl;
+					fprintf(tab[pos]->fp,"%d",x);
+				}
+				else if(tmp=="float"){
+					float x=std::stof(valuelist[j]);
+					fprintf(tab[pos]->fp,"%f",x);
+				}
+				else if(tmp=="double"){
+					double x=std::stold(valuelist[j]);
+					fprintf(tab[pos]->fp,"%f",x);
+				}
+				else if (tmp == "char") {
+						int cnt = tab[pos]->size[i];
+						char* x = new char[cnt];
+						strcpy(x,valuelist[j].c_str());
+						fprintf(tab[pos]->fp, "%s", x);
+						delete x;
+				}
+			}
+		}
+		if(flag==0){
+			fprintf(tab[pos]->fp," ");
+		}
+		if (i != tab[pos]->type.size() - 1){
+			fprintf(tab[pos]->fp, "%c", ' ');
+		}
+	}
+	fprintf(tab[pos]->fp, "%c", '\n');//换行
+	fclose(tab[pos]->fp);
+	cout << "插入成功!" << endl;
+}
 //删除数据
 //delete from 表名 where 列名 = 值(值可为all,表全部范围)
 void myDBMS::myDelete(string tableName,string isWhere) {
@@ -527,12 +605,9 @@ void myDBMS::myQuery(string toColName, string tableName, string isWhere = "") {
 	if (pos == -1)return;
 
 	tab[pos]->fp = fopen(tab[pos]->pathName.c_str(), "r");
-
-	char contant[1024];
-	//fscanf(tab[pos]->fp, "%s", contant);
+	char contant[MAX_SIZE];
 	fgets(contant, sizeof(contant), tab[pos]->fp);
 
-    cout<<toColName<<"heihei"<<endl;
 	if (isWhere == "") {//全输出
 		int len = strlen(contant);
 		for (int i = 0; i < len; i++)
@@ -540,22 +615,21 @@ void myDBMS::myQuery(string toColName, string tableName, string isWhere = "") {
 				contant[i] = ' ';
 		stringstream tmp(toColName);
 		string x,y;
-		int *sign,j,*ptr,num=0;
-		ptr = sign;
+		int sign[20],j,num=0;
 		while(tmp>>y){
             //cout<<"y:"<<y<<endl;
             stringstream ss(contant);
-            for (int i = 0; i < tab[pos]->size.size(); i++) {//先输出colNames
+            for (int v = 0; v < tab[pos]->size.size(); v++) {//先输出colNames
                 ss >> x;
+                //cout<<x<<y<<endl;
                 if(x == y){
                     //确定输出数据显示的宽度
                     int width = 15;
-                    if (tab[pos]->size[i] != 1)
-                    width = tab[pos]->size[i];
+                    if (tab[pos]->size[v] != 1)
+                    width = tab[pos]->size[v];
                     cout << left << setw(width) << x;//左对齐并设置宽度输出
-                    *sign = i;
+                    sign[num] = v;
                     //cout<<"sign:"<<*sign<<' ';
-                    sign++;
                     num++;
                 }
                 ss >> x;//类型
@@ -568,13 +642,16 @@ void myDBMS::myQuery(string toColName, string tableName, string isWhere = "") {
 		while(!feof(tab[pos]->fp)) {
 			memset(contant, 0, sizeof(contant));
 			fgets(contant, sizeof(contant), tab[pos]->fp);
-			if (strlen(contant) == 0)break;
+			if (strlen(contant) == 0){
+                break;
+			}
 			stringstream out(contant);
 			string x;
-			int i,n=num,*tk=ptr;
+			int i,n=num,j=0;
 			for(i=0;i<tab[pos]->type.size(),n!=0;i++) {
                 out >> x;
-                if(i==*tk){
+                //cout<<x<<" ";
+                if(i==sign[j]){
                     int width = 15;
                     if (tab[pos]->size[i] != 1)
                         width = tab[pos]->size[i];
@@ -586,7 +663,7 @@ void myDBMS::myQuery(string toColName, string tableName, string isWhere = "") {
                         cout << left << setw(width) << atof(x.c_str());
                     else if (tmp == "char")
                         cout << left << setw(width) << x;
-                    tk++;
+                    j++;
                     n--;
                 }
 			}
@@ -596,49 +673,252 @@ void myDBMS::myQuery(string toColName, string tableName, string isWhere = "") {
 	else {//部分输出
 		stringstream ss(isWhere);
 		int aimPos = inf;
-		int *ptr,*tk;
-		tk = ptr;
+		int pcolName[20];
+		int j=0;
 		string typeName, toValue, whr, deng;
 		ss >> whr >> typeName >> deng >> toValue;
-		for (int i = 0; i < tab[pos]->colName.size(); i++) //找到规定范围colName下标
+		stringstream s(toColName);
+		string z;
+
+		while(s>>z){
+            //cout<<"z:"<<z<<endl;
+            for (int i = 0; i < tab[pos]->colName.size(); i++){
+                //cout<<"colName:"<<tab[pos]->colName[i]<<endl;
+                if (tab[pos]->colName[i] == z) {
+                    int width = 15;
+                    if (tab[pos]->size[i] != 1)
+                    width = tab[pos]->size[i];
+                    cout << left << setw(width) << z;
+                    pcolName[j] = i;
+                    //cout<<"pcolName:"<<pcolName[j]<<endl;
+                    j++;
+                }
+            }
+		}
+		cout<<endl;
+		for (int i = 0; i < tab[pos]->colName.size(); i++)
 			if (tab[pos]->colName[i] == typeName) {
-				*ptr = i;
-				ptr++;
-			}
-		for (int i = 0; i < tab[pos]->colName.size(); i++) //找到规定范围colName下标
-			if (tab[pos]->colName[i] == toColName) {
 				aimPos = i;
+				//cout<<"aimPos:"<<aimPos<<endl;
 				break;
 			}
 		while (!feof(tab[pos]->fp)) {
 			memset(contant, 0, sizeof(contant));
 			fgets(contant, sizeof(contant), tab[pos]->fp);
 			stringstream myTmp(contant);
-			string x, check, out;
-			int *pp = tk;
+			string x, check, out;//out:存放需要输出的列
+			j = 0;
 			for (int i = 0; i < tab[pos]->colName.size(); i++) {
 				myTmp >> x;
-				if (i == *tk)check = x;
-				if (i == aimPos)out = x;
+				if (i == pcolName[j]){
+                    out = out+x+" ";
+                    //cout<<out<<endl;
+                    j++;
+				}
+				if (i == aimPos)check = x;
 			}
+			j = 0;
+			stringstream ss(out);
 			if (check == toValue) {
-				int width = 15;
-				if (tab[pos]->size[aimPos] != 1)
-					width = tab[pos]->size[aimPos];
-				string tmp = tab[pos]->type[aimPos];
-				if (tmp == "int")
-					cout << left << setw(width) << atoi(out.c_str()) << endl;
-				else if (tmp == "float")
-					cout << left << setw(width) << atof(out.c_str()) << endl;
-				else if (tmp == "double")
-					cout << left << setw(width) << atof(out.c_str()) << endl;
-				else if (tmp == "char")
-					cout << left << setw(width) << out << endl;
+                while(ss>>x){
+                    int width = 15;
+                    if (tab[pos]->size[pcolName[j]] != 1)
+                        width = tab[pos]->size[pcolName[j]];
+                    string tmp = tab[pos]->type[pcolName[j]];
+                    j++;
+                    if (tmp == "int")
+                        cout << left << setw(width) << atoi(x.c_str()) ;
+                    else if (tmp == "float")
+                        cout << left << setw(width) << atof(x.c_str()) ;
+                    else if (tmp == "double")
+                        cout << left << setw(width) << atof(x.c_str()) ;
+                    else if (tmp == "char")
+                        cout << left << setw(width) << x ;
+                }
+                cout<<endl;
 			}
 		}
 	}
 	fclose(tab[pos]->fp);
 }
+
+//获取所有列名
+string myDBMS::get_toColName(string tableName){
+    if (!open) {
+		cout << "无选中数据库!" << endl;
+        exit(1);
+	}
+	int pos = inf;
+	for (int i = 0; i < tab.size(); i++)
+		if (tab[i]->name == tableName) {
+			pos = i; break;
+		}
+	if (pos == inf)
+		pos = posIsNos(tableName);
+	if (pos == -1)return "";
+
+	tab[pos]->fp = fopen(tab[pos]->pathName.c_str(), "r");
+	char contant[1024];
+	fgets(contant, sizeof(contant), tab[pos]->fp);
+    fclose(tab[pos]->fp);
+    int len = strlen(contant);
+    for (int i = 0; i < len; i++)
+        if (contant[i] == ';')
+            contant[i] = ' ';
+    stringstream tmp(contant);
+    string x,toColName,y=",";
+    for(int i=0;i<tab[pos]->size.size(); i++){
+        tmp>>x;
+        toColName=toColName+x;
+        toColName=toColName+y;
+        tmp>>x;
+        tmp>>x;
+    }
+    len = toColName.size();
+    toColName = toColName.substr(0,len-1);
+    return toColName;
+}
+
+void myDBMS::productImplement(vector<vector<string>> dimvalue,vector<vector<string>> &res,int layer,vector<string> tmp){
+    if (layer < dimvalue.size() - 1){
+		for (int i = 0; i < dimvalue[layer].size(); i++){//对每一个容器
+			vector<string> sb;//新建一个容器sb
+			sb.clear();//清空容器
+
+			for (int i = 0; i < tmp.size(); i++){
+					sb.push_back(tmp[i]);
+			}
+			sb.push_back(dimvalue[layer][i]);
+			productImplement(dimvalue, res, layer+1,sb);
+		}
+	}
+	else if (layer == dimvalue.size()-1){
+		for (int j = 0; j < dimvalue[layer].size();j++){
+            tmp.push_back(dimvalue[layer][j]);
+			res.push_back(tmp);
+			tmp.pop_back();
+		}
+	}
+}
+
+void myDBMS::connect(string tableName1,string tableName2){
+    if (!open) {
+		cout << "无选中数据库!" << endl;
+		return;
+	}
+	int pos1 = inf, pos2 = inf;
+	for (int i = 0; i < tab.size(); i++)
+		if (tab[i]->name == tableName1) {
+			pos1 = i; break;
+		}
+	if (pos1 == inf)
+		pos1 = posIsNos(tableName1);
+	if (pos1 == -1)return;
+
+	for (int i = 0; i < tab.size(); i++)
+		if (tab[i]->name == tableName2) {
+			pos2 = i; break;
+		}
+	if (pos2 == inf)
+		pos2 = posIsNos(tableName2);
+	if (pos2 == -1)return;
+
+	vector<string> t1,t2;
+	char contant[1024];
+	int num[40];
+	int n = 0;
+
+	tab[pos1]->fp = fopen(tab[pos1]->pathName.c_str(), "r");
+	fgets(contant, sizeof(contant), tab[pos1]->fp);
+	for(int i=0;i<strlen(contant);i++){
+        if(contant[i]==';')contant[i]=' ';
+	}
+	stringstream ss1(contant);
+	string str1;
+	for (int v = 0; v < tab[pos1]->size.size(); v++){
+        ss1 >> str1;
+        int width = 15;
+        if (tab[pos1]->size[v] != 1)
+            width = tab[pos1]->size[v];
+        //cout<<width;
+        cout << left << setw(width) << str1;//左对齐并设置宽度输出
+        ss1 >> str1;//类型
+        ss1 >> str1;//大小
+        num[n] = atoi(str1.c_str());
+        n++;
+	}
+	while (!feof(tab[pos1]->fp)){
+        memset(contant, 0, sizeof(contant));
+        fgets(contant, sizeof(contant), tab[pos1]->fp);
+        if (strlen(contant) == 0)break;
+        for(int i=0;i<strlen(contant);i++){
+            if(contant[i]==';')contant[i]=' ';
+        }
+        string x(contant);
+        x=x.substr(0,strlen(contant)-1);
+        x=x+" ";
+        t1.push_back(x);
+	}
+	fclose(tab[pos1]->fp);
+
+	tab[pos2]->fp = fopen(tab[pos2]->pathName.c_str(), "r");
+	fgets(contant, sizeof(contant), tab[pos2]->fp);
+	for(int i=0;i<strlen(contant);i++){
+        if(contant[i]==';')contant[i]=' ';
+	}
+	stringstream ss2(contant);
+	string str2;
+	for (int v = 0; v < tab[pos2]->size.size(); v++){
+        ss2 >> str2;
+        int width = 15;
+        if (tab[pos1]->size[v] != 1)
+            width = tab[pos1]->size[v];
+        //cout<<width;
+        cout << left << setw(width) << str2;//左对齐并设置宽度输出
+        ss2 >> str2;//类型
+        ss2 >> str2;//大小
+        num[n] = atoi(str2.c_str());
+        n++;
+	}
+	while (!feof(tab[pos2]->fp)){
+        memset(contant, 0, sizeof(contant));
+        fgets(contant, sizeof(contant), tab[pos2]->fp);
+        if (strlen(contant) == 0)break;
+        for(int i=0;i<strlen(contant);i++){
+            if(contant[i]==';')contant[i]=' ';
+        }
+        string x(contant);
+        x=x.substr(0,strlen(contant)-1);
+        x=x+" ";
+        t2.push_back(x);
+	}
+	fclose(tab[pos2]->fp);
+	cout<<endl;
+
+	vector<vector<string>> dimvalue;
+	dimvalue.push_back(t1);
+	dimvalue.push_back(t2);
+	vector<string> tmp;
+	vector<vector<string>> res;
+
+	int layer = 0, k;
+	productImplement(dimvalue, res, layer, tmp);
+	for (int i = 0; i < res.size(); i++){
+	    k=0;
+		for (int j = 0; j < res[i].size(); j++){
+            //cout<<res[i][j]<<endl;
+            stringstream ss(res[i][j]);
+            string x;
+            if(num[k]<15)num[k]=15;
+            while(ss>>x){
+                cout << std::left << setw(num[k]) << x ;
+                k++;
+            }
+		}
+		cout << endl;
+	}
+}
+
 
 int main(void) {
 	myDBMS db;
@@ -682,16 +962,30 @@ int main(void) {
 		}
 		else if (db.cmd == "insert") {
 			//insert into 表名(field1,field2,…) values(value1,value2,…)"
-			string tmp, name, value;
+			string tmp, name, value,fieldname;
 			cin >> db.cmd >> name >> tmp;
-			value = tmp.substr(7);
+			//cout<<"db.cmd:"<<db.cmd<<" name:"<<name<<" tmp:"<<tmp<<endl;
+			value = tmp.substr(7);//截到values(
+			//cout<<value<<endl;
 			vector<string>colName;
 			int pos = name.find('(');
-			for (int i = 0; i < value.length(); i++)
+			fieldname=name.substr(pos+1);
+			//cout<<fieldname<<endl;
+			for(int i=0;i<fieldname.length();i++){
+				if(fieldname[i]==','||fieldname[i]=='('||fieldname[i]==')'){
+					fieldname[i]=' ';
+				}
+			}
+			for(int i = 0; i < value.length(); i++)
 				if (value[i] == ',' || value[i] == '(' || value[i] == ')')
 					value[i] = ' ';
-			//cout << "value:" << value << endl;
-			db.myInsert(name.substr(0, pos), value);
+			if(pos==string::npos){
+				db.myInsert(name,value);			
+			}
+			else{
+			//cout <<"fieldname:"<<fieldname<< "value:" << value << endl;
+			db.myInsertwithCol(name.substr(0, pos),fieldname,value);
+			}
 		}
 		else if (db.cmd == "delete") {
 			//delete from 表名 where 范围
@@ -713,24 +1007,28 @@ int main(void) {
 			//"查询单值  : select 列名 from 表名 where 列名 = 值(值可为all,表全部范围)"
 			string toColName, tableName;
 			cin >> toColName >> db.cmd >> tableName;
-			if (toColName.length() == 3 && tolower(toColName[0]) == 'a' && tolower(toColName[1]) == 'l' && tolower(toColName[2]) == 'l') {
-				db.myQuery(toColName, tableName);
-			}
-			else {
-				string isWhere;
-				getline(cin,isWhere);
-				for(int i=0;i<toColName.length();i++){
-                    if(toColName[i] == ',')
-                        toColName[i] = ' ';
-				}
-				db.myQuery(toColName, tableName, isWhere);
-			}
+            string isWhere;
+            getline(cin,isWhere);
+            if (toColName.length() == 3 && tolower(toColName[0]) == 'a' && tolower(toColName[1]) == 'l' && tolower(toColName[2]) == 'l') {
+                toColName = db.get_toColName(tableName);
+            }
+            for(int i=0;i<toColName.length();i++){
+                if(toColName[i] == ',')
+                    toColName[i] = ' ';
+            }
+            //cout<<toColName<<"end"<<endl;
+            db.myQuery(toColName, tableName, isWhere);
+		}
+		else if(db.cmd == "connect"){
+            db.connect("student","sc");
 		}
 		else {
 			string tmp;
 			getline(cin, tmp);
 			cout << "输入命令错误,请检查!" << endl;
 		}
+
 	}
 	return 0;
 }
+//select all from student,course
