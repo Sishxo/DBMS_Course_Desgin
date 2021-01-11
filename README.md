@@ -26,3 +26,13 @@ DBMS_1.10.C
 实现了select all
 初步实现了笛卡尔积
 未完成的查询包括：包含and、or语句，连接查询等
+
+2021/1/11
+DBMS_1.11.C
+连接操作能够实现：select all from 表名1.列名 = 表名2.列名
+（我自己的电脑上codeBlocks编译后有时这个功能会出问题，但是再编译一下就好了，目前还在检查哪里出的问题）
+
+2021/1/11
+DBMS.cpp
+原本的insert语句只能整行插入，fieldname部分不起作用
+该次变更加入了insert into tablename values(value1,....)以及允许只插入部分field的insert语句
