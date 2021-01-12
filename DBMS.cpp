@@ -20,6 +20,7 @@ struct Tables {
 	string pathName;//存储路径名称
 	vector<string>colName;//列名称
 	vector<string>type;//类型
+	vector<int>key;//主键
 	vector<int>size;//大小
 	FILE* fp;//文件指针
 };
@@ -44,8 +45,8 @@ public:
 		cout << "关闭数据库: close database 数据库名字" << endl;
 		cout << "添加新表  : create table  表名" << endl;
 		cout << "            (" << endl;
-		cout << "            列1(字段)名 数据类型1(大小:若为1可省略)" << endl;
-		cout << "            列2(字段)名 数据类型2(大小:若为1可省略)" << endl;
+		cout << "            列1(字段)名 数据类型1(大小:若为1可省略) primarykey(若不是可省略)"  << endl;
+		cout << "            列2(字段)名 数据类型2(大小:若为1可省略) primarykey" << endl;
 		cout << "            …          …" << endl;
 		cout << "            )" << endl;
 		cout << "删除旧表  : drop table 表名" << endl;
@@ -164,12 +165,13 @@ create table 表名
 void myDBMS::myCreateTable(string tableName) {
 	vector<string>colName;//列名
 	vector<string>type;//类型
+	vector<int>key;//主键
 	vector<int>size;//大小
 	string tmp;
 	getchar();//读去回车
 	//getline:读取整行，包括前导和嵌入的空格，并将其存储在字符串对象中
 	getline(cin, tmp);//读（这一行
-	getline(cin, tmp);//读列名，字段名
+	getline(cin, tmp);//读列名，字段名,是否主键
 	while (tmp != ")") {//当没有读到最后一行
 		stringstream ss(tmp);//将数据传递给一个stringstream 对象
 		string x;
@@ -190,6 +192,14 @@ void myDBMS::myCreateTable(string tableName) {
 				num = num * 10 + x[i] - '0';
 			size.push_back(num);//把大小加入size的最后
 		}
+		string iskey;
+		ss>>iskey;
+		if(iskey=="primarykey"){
+			key.push_back(1);
+		}
+		else{
+			key.push_back(0);
+		}
 		getline(cin, tmp);//获取下一行
 	}
 	tableName += ".txt";//将表存为.TXT文件
@@ -202,13 +212,18 @@ void myDBMS::myCreateTable(string tableName) {
 		ptr->colName = colName;
 		ptr->type = type;
 		ptr->size = size;
+		ptr->key =key;
 		ptr->fp = fopen(pathName.c_str(), "w");
 		string wrin;
 		wrin.clear();
 		//将该表的结构存在一行里
 		for (int i = 0; i < colName.size(); i++)
+			if(key[i]==1){
+				wrin += colName[i] + ";" + type[i] + ";" + to_string(size[i]) + ";"+"primaryKey"+";";
+			}else{
             //以 列名;类型;大小; 的形式存入文件
 			wrin += colName[i] + ";" + type[i] + ";" + to_string(size[i]) + ";";
+			}
 		wrin += "\n";//换行
 		fprintf(ptr->fp,wrin.c_str());//写入文件
 		fclose(ptr->fp);//关闭文件
@@ -240,7 +255,7 @@ void myDBMS::myDropTable(string tableName) {
 	}
 }
 
-//辅助函数,参数：表名
+//辅助函数,参数：表名,用于读一个txt表文件并读入tab容器中
 int myDBMS::posIsNos(string tableName) {
 	string pathName = prePath + tableName + ".txt";
 	if (0 != access(pathName.c_str(), 0)) {
