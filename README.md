@@ -46,3 +46,22 @@ DBMS.cpp
 合并了上一次变更dms部分的代码
 重写了主键部分，实现了建表时主键的指定，可指定单个或多个主键
 变更时记得及时merge最新的代码进度，避免产生无效代码，耗费工作量
+
+2021/1/13
+DDL部分
+1.数据插入（已完成数据类型判断，以及防止主键冲突）
+*数据结构：列名；类型；大小；是否为主键
+数据类型判断，以及防止主键冲突我根据新的数据结构重新写了一下
+报错的形式可能需要细化，现在是是统一反馈“插入失败”
+2.数据更新
+3.查询(以下为现在能运行的例子)
+  select all from student
+  select Sno from student
+  select Sname from student
+  select Sno,Sname from student(目前顺序还不能调换，有空再调)
+  *以上语句都可以带简单的where查询，如where Sno = 200(注意要有空格)
+  select all from student,sc where student.Sno = sc.Sno
+  select Cno from student,sc where student.Sno = sc.Sno
+  select Cno,score from student,sc where student.Sno = sc.Sno
+4.建表、删表
+5.数据删除
