@@ -1,9 +1,4 @@
 name;char;5;age;int;5;
 sishxo 11
 lyt 12
-qa 2
-a 1
-a 1
-a  
-  1
 null 1
