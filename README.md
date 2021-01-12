@@ -36,3 +36,8 @@ DBMS_1.11.C
 DBMS.cpp
 原本的insert语句只能整行插入，fieldname部分不起作用
 该次变更加入了insert into tablename values(value1,....)以及允许只插入部分field的insert语句
+
+2021/1/12
+dmc
+1.增加了string key，在create表语句里面的最后一行使用，但是只能写作primarykey，中间不能有空格，文件打开也可以看到primarykey的内容
+2.修改了insert函数，可以判断char类型和int类型是否超过限制的范围。
