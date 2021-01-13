@@ -5,12 +5,14 @@
 #include <string.h>
 #include <sstream>
 #include <iomanip>
+#include<windows.h>
 
 #include <direct.h>
 #include <io.h>
 
 #include <fstream>
 #define MAX_SIZE 1000000
+
 using namespace std;
 
 const int inf = 0x3f3f3f3f;//int型整数的最大值
@@ -51,7 +53,8 @@ public:
 		cout << "            )" << endl;
 		cout << "删除旧表  : drop table 表名" << endl;
 		cout << "查看全表  : select all from 表名" << endl;
-		cout << "查询单值  : select 列名 from 表名 where 列名 = 值(值可为all,表全部范围)" << endl;
+		cout << "简单查询  : select 列名 from 表名 where 列名 = 值(值可为all,表全部范围)" << endl;
+		cout << "            select all from 表名1，表名2 where 表名1.列名1 = 表名2.列名2" << endl;
 		cout << "插入      : insert into 表名(field1,field2,…) values(value1,value2,…)" << endl;
 		cout << "修改      : update 列名 = 新值 from 表名 where 列名 = 值(值可为all,表全部范围)" << endl;
 		cout << "删除      : delete from 表名 where 列名 = 值(值可为all,表全部范围)" << endl;
@@ -696,15 +699,19 @@ void myDBMS::myQuery(string toColName, string tableName, string isWhere = "") {
 	tab[pos]->fp = fopen(tab[pos]->pathName.c_str(), "r");
 	char contant[MAX_SIZE];
 	fgets(contant, sizeof(contant), tab[pos]->fp);
+	stringstream ss(contant);
+	string x;
+	int keyPos = 0;
 
 	if (isWhere == "") {//全输出
+	    //cout<<toColName<<endl;
 		int len = strlen(contant);
 		for (int i = 0; i < len; i++)
 			if (contant[i] == ';')
 				contant[i] = ' ';
 		stringstream tmp(toColName);
-		string x,y;
-		int sign[20],j,num=0;
+		string x,y,type[tab[pos]->size.size()];
+		int sign[20],j,num=0,size[tab[pos]->size.size()];
 		while(tmp>>y){
             //cout<<"y:"<<y<<endl;
             stringstream ss(contant);
@@ -718,11 +725,15 @@ void myDBMS::myQuery(string toColName, string tableName, string isWhere = "") {
                     width = tab[pos]->size[v];
                     cout << left << setw(width) << x;//左对齐并设置宽度输出
                     sign[num] = v;
+                    size[num] = tab[pos]->size[v];
+                    type[num] = tab[pos]->type[v];
                     //cout<<"sign:"<<*sign<<' ';
                     num++;
+                    break;
                 }
                 ss >> x;//类型
                 ss >> x;//大小
+                ss >> x;//key
             }
 		}
 		cout << endl;
@@ -734,26 +745,28 @@ void myDBMS::myQuery(string toColName, string tableName, string isWhere = "") {
 			if (strlen(contant) == 0){
                 break;
 			}
+			//cout<<contant<<endl;
 			stringstream out(contant);
 			string x;
-			int i,n=num,j=0;
-			for(i=0;i<tab[pos]->type.size(),n!=0;i++) {
-                out >> x;
-                //cout<<x<<" ";
-                if(i==sign[j]){
-                    int width = 15;
-                    if (tab[pos]->size[i] != 1)
-                        width = tab[pos]->size[i];
-                    string tmp = tab[pos]->type[i];
-                    //cout<<tmp;
-                    if (tmp == "int")
-                        cout << left << setw(width) << atoi(x.c_str());
-                    else if (tmp == "float" || tmp == "double")
-                        cout << left << setw(width) << atof(x.c_str());
-                    else if (tmp == "char")
-                        cout << left << setw(width) << x;
-                    j++;
-                    n--;
+			int i,k;
+			for(k=0;k<num;k++) {
+                //cout<<"x:"<<x<<endl;
+                //cout<<sign[k]<<endl;
+                for(i=0;i<tab[pos]->size.size();i++){
+                    out >> x;
+                    if(i==sign[k]){
+                        int width = 15;
+                        if (tab[pos]->size[i] != 1)
+                            width = tab[pos]->size[i];
+                        string tmp = tab[pos]->type[i];
+                        //cout<<tmp;
+                        if (tmp == "int")
+                            cout << left << setw(width) << atoi(x.c_str());
+                        else if (tmp == "float" || tmp == "double")
+                            cout << left << setw(width) << atof(x.c_str());
+                        else if (tmp == "char")
+                            cout << left << setw(width) << x;
+                    }
                 }
 			}
 			cout << endl;
@@ -830,7 +843,7 @@ void myDBMS::myQuery(string toColName, string tableName, string isWhere = "") {
 	}
 	fclose(tab[pos]->fp);
 }
-
+//select all from student,sc where student.Sno = sc.Sno
 //获取所有列名
 string myDBMS::get_toColName(string tableName){
     if (!open) {
@@ -862,6 +875,7 @@ string myDBMS::get_toColName(string tableName){
         toColName=toColName+y;
         tmp>>x;
         tmp>>x;
+        tmp>>x;
     }
     len = toColName.size();
     toColName = toColName.substr(0,len-1);
@@ -890,7 +904,8 @@ void myDBMS::productImplement(vector<vector<string>> dimvalue,vector<vector<stri
 	}
 }
 
-void myDBMS::connect(string tableName1,string tableName2){
+void myDBMS::connect(string toColName,string tableName1,string tableName2,string colName1,string colName2){
+    //cout<<tableName1<<tableName2<<endl;
     if (!open) {
 		cout << "无选中数据库!" << endl;
 		return;
@@ -913,29 +928,32 @@ void myDBMS::connect(string tableName1,string tableName2){
 	if (pos2 == -1)return;
 
 	vector<string> t1,t2;
-	char contant[1024];
+	char contant[102400];
 	int num[40];
 	int n = 0;
+	int v1,v2;
+
+	for(int i=0;i<tab[pos1]->size.size();i++){
+        if(colName1==tab[pos1]->colName[i]){
+            v1=i;
+            break;
+        }
+	}
+	for(int i=0;i<tab[pos2]->size.size();i++){
+        if(colName2==tab[pos2]->colName[i]){
+            v2=i;
+            break;
+        }
+	}
+
+
+	string pathName =prePath +"tmp.txt";
+	FILE* tmpfptr = fopen(pathName.c_str(), "w");
 
 	tab[pos1]->fp = fopen(tab[pos1]->pathName.c_str(), "r");
 	fgets(contant, sizeof(contant), tab[pos1]->fp);
-	for(int i=0;i<strlen(contant);i++){
-        if(contant[i]==';')contant[i]=' ';
-	}
-	stringstream ss1(contant);
-	string str1;
-	for (int v = 0; v < tab[pos1]->size.size(); v++){
-        ss1 >> str1;
-        int width = 15;
-        if (tab[pos1]->size[v] != 1)
-            width = tab[pos1]->size[v];
-        //cout<<width;
-        cout << left << setw(width) << str1;//左对齐并设置宽度输出
-        ss1 >> str1;//类型
-        ss1 >> str1;//大小
-        num[n] = atoi(str1.c_str());
-        n++;
-	}
+	string cc1(contant);
+
 	while (!feof(tab[pos1]->fp)){
         memset(contant, 0, sizeof(contant));
         fgets(contant, sizeof(contant), tab[pos1]->fp);
@@ -952,23 +970,21 @@ void myDBMS::connect(string tableName1,string tableName2){
 
 	tab[pos2]->fp = fopen(tab[pos2]->pathName.c_str(), "r");
 	fgets(contant, sizeof(contant), tab[pos2]->fp);
-	for(int i=0;i<strlen(contant);i++){
-        if(contant[i]==';')contant[i]=' ';
-	}
-	stringstream ss2(contant);
-	string str2;
-	for (int v = 0; v < tab[pos2]->size.size(); v++){
-        ss2 >> str2;
-        int width = 15;
-        if (tab[pos1]->size[v] != 1)
-            width = tab[pos1]->size[v];
-        //cout<<width;
-        cout << left << setw(width) << str2;//左对齐并设置宽度输出
-        ss2 >> str2;//类型
-        ss2 >> str2;//大小
-        num[n] = atoi(str2.c_str());
-        n++;
-	}
+	string cc2(contant);
+	cc1=cc1.substr(0,cc1.size()-2)+";"+cc2;
+    fprintf(tmpfptr, "%s", cc1.c_str());
+    for(int i=0;i<cc1.size();i++){
+        if(cc1[i]==';')cc1[i]=' ';
+    }
+    stringstream col(cc1);
+    string c="";
+    for(int i=0;i<tab[pos1]->size.size()+tab[pos2]->size.size();i++){
+        col>>cc2;
+        //cout<<cc2<<endl;
+        c=c+cc2+" ";
+        col>>cc2;col>>cc2;col>>cc2;
+    }
+
 	while (!feof(tab[pos2]->fp)){
         memset(contant, 0, sizeof(contant));
         fgets(contant, sizeof(contant), tab[pos2]->fp);
@@ -982,7 +998,6 @@ void myDBMS::connect(string tableName1,string tableName2){
         t2.push_back(x);
 	}
 	fclose(tab[pos2]->fp);
-	cout<<endl;
 
 	vector<vector<string>> dimvalue;
 	dimvalue.push_back(t1);
@@ -990,23 +1005,67 @@ void myDBMS::connect(string tableName1,string tableName2){
 	vector<string> tmp;
 	vector<vector<string>> res;
 
-	int layer = 0, k;
+	int layer = 0,v[tab[pos1]->size.size()*tab[pos2]->size.size()],z=0;
+	string x,x1,x2;
 	productImplement(dimvalue, res, layer, tmp);
 	for (int i = 0; i < res.size(); i++){
-	    k=0;
-		for (int j = 0; j < res[i].size(); j++){
-            //cout<<res[i][j]<<endl;
-            stringstream ss(res[i][j]);
-            string x;
-            if(num[k]<15)num[k]=15;
-            while(ss>>x){
-                cout << std::left << setw(num[k]) << x ;
-                k++;
-            }
+        //cout<<res[i][0]<<res[i][1]<<endl;
+		stringstream ss1(res[i][0]);
+		int j=0;
+		ss1>>x;
+        while(j<v1){
+            ss1>>x;
+            //cout<<x<<" ";
+            j++;
+        }
+		x1=x;
+		stringstream ss2(res[i][1]);
+		j=0;
+        ss2>>x;
+		while(j<v2){
+            ss2>>x;
+            //cout<<"x:"<<x<<" ";
+            j++;
+        }
+		x2=x;
+		//cout<<x1<<x2<<endl;
+		if(x1==x2){
+            v[z]=i;
+            z++;
 		}
-		cout << endl;
+		//cout<<"";
 	}
+	z=0;
+	for(int i=0;i<res.size();i++){
+        if(i==v[z]){
+            int k=0;
+            for (int j = 0; j < res[i].size(); j++){
+                //cout<<res[i][j]<<endl;
+                stringstream ss(res[i][j]);
+                string x;
+                if(num[k]<15)num[k]=15;
+                while(ss>>x){
+                    fprintf(tmpfptr, "%s", x.c_str());
+                    string tmp1=" ";
+                    fprintf(tmpfptr, "%s", tmp1.c_str());
+                    k++;
+                }
+            }
+            string tmp2="\n";
+            fprintf(tmpfptr, "%s", tmp2.c_str());
+            z++;
+        }
+	}
+	fclose(tmpfptr);
+	Sleep(3*1000);
+	if(toColName=="all"){
+        toColName = c;
+        //cout<<toColName;
+	}
+	myQuery(toColName, "tmp");
+	//remove(pathName.c_str());
 }
+//select all from student,sc where student.Sno = sc.Sno
 
 
 int main(void) {
@@ -1096,20 +1155,54 @@ int main(void) {
 			//"查询单值  : select 列名 from 表名 where 列名 = 值(值可为all,表全部范围)"
 			string toColName, tableName;
 			cin >> toColName >> db.cmd >> tableName;
-            string isWhere;
+			string isWhere;
             getline(cin,isWhere);
-            if (toColName.length() == 3 && tolower(toColName[0]) == 'a' && tolower(toColName[1]) == 'l' && tolower(toColName[2]) == 'l') {
-                toColName = db.get_toColName(tableName);
-            }
-            for(int i=0;i<toColName.length();i++){
-                if(toColName[i] == ',')
-                    toColName[i] = ' ';
-            }
+            //cout<<isWhere<<endl;
+			int flag=0;//判断是否需要做连接操作
+			for(int i=0;i<tableName.size();i++){
+                if(tableName[i]==','){
+                    tableName[i]=' ';
+                    flag=1;
+                    break;
+                }
+			}
+			if(flag){
+                stringstream ss(tableName);
+                string t1,t2;
+                ss>>t1;ss>>t2;
+                for(int i=0;i<isWhere.size();i++){
+                    if(isWhere[i]==',')isWhere[i]=' ';
+                }
+                stringstream ww(isWhere);
+                string where,c1,deng,c2;
+                ww>>where;ww>>c1;ww>>deng;ww>>c2;
+                for(int i=0;i<c1.size();i++){
+                    if(c1[i]=='.')c1[i]=' ';
+                }
+                for(int i=0;i<c2.size();i++){
+                    if(c2[i]=='.')c2[i]=' ';
+                }
+                //select all from student,sc where student.Sno = sc.Sno
+                stringstream cc1(c1),cc2(c2);
+                cc1>>c1;cc1>>c1;
+                cc2>>c2;cc2>>c2;
+                for(int i=0;i<toColName.length();i++){
+                    if(toColName[i] == ',')
+                        toColName[i] = ' ';
+                }
+                db.connect(toColName,t1,t2,c1,c2);
+			}
+			else{
+                if (toColName.length() == 3 && tolower(toColName[0]) == 'a' && tolower(toColName[1]) == 'l' && tolower(toColName[2]) == 'l') {
+                    toColName = db.get_toColName(tableName);
+                }
+                for(int i=0;i<toColName.length();i++){
+                    if(toColName[i] == ',')
+                        toColName[i] = ' ';
+                }
+                db.myQuery(toColName, tableName, isWhere);
+			}
             //cout<<toColName<<"end"<<endl;
-            db.myQuery(toColName, tableName, isWhere);
-		}
-		else if(db.cmd == "connect"){
-            db.connect("student","sc");
 		}
 		else if(db.cmd== "alter"){
 			string table_name,action;
