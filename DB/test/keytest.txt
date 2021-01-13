@@ -1,1 +1,1 @@
-int;int;1;string;string;1;primaryKey;
+field1;int;1;isKey;field2;string;1;notKey;

@@ -81,6 +81,8 @@ public:
 	void myDelete(string,string); //删除数据
 	void myUpdate(string, string, string, string); //更新数据
 	void myQuery(string, string, string); //查询数据
+	void AddColumn(string);//增加表中的列
+	void DropColumn(string);//删除表中的列
 	void connect(string,string);
 	void productImplement(vector<vector<string>> dimvalue,vector<vector<string>> &res,int,vector<string> tmp);
 	string get_toColName(string);//获取toColName
@@ -219,10 +221,10 @@ void myDBMS::myCreateTable(string tableName) {
 		//将该表的结构存在一行里
 		for (int i = 0; i < colName.size(); i++)
 			if(key[i]==1){
-				wrin += colName[i] + ";" + type[i] + ";" + to_string(size[i]) + ";"+"primaryKey"+";";
+				wrin += colName[i] +";"+ type[i] + ";" + to_string(size[i]) + ";"+"isKey"+";";
 			}else{
             //以 列名;类型;大小; 的形式存入文件
-			wrin += colName[i] + ";" + type[i] + ";" + to_string(size[i]) + ";";
+			wrin += colName[i] + ";" + type[i] + ";" + to_string(size[i]) + ";"+"notKey"+";";
 			}
 		wrin += "\n";//换行
 		fprintf(ptr->fp,wrin.c_str());//写入文件
@@ -255,6 +257,72 @@ void myDBMS::myDropTable(string tableName) {
 	}
 }
 
+//alter table table_name
+//add column_name datatype(size)
+void myDBMS::AddColumn(string tableName){
+	if(!open){
+		cout << "无选中数据库!" << endl;
+		return;
+	}
+	int pos=inf;
+	for (int i = 0; i < tab.size(); i++)
+		if (tab[i]->name == tableName) {
+			pos=i; 
+			break;
+		}
+	if(pos==inf){
+		pos=posIsNos(tableName);
+	}
+	if(pos==-1) return;
+	string tmp,x;
+	getline(cin,tmp);
+	stringstream ss(tmp);
+	ss>>x;
+	tab[pos]->colName.push_back(x);
+	ss>>x;
+	int pos2=x.find('(');
+	if(pos2 == string::npos){
+		tab[pos]->type.push_back(x);
+		tab[pos]->size.push_back(1);
+	}
+	else{
+		tab[pos]->type.push_back(x.substr(0,pos2));
+		int num = 0;
+			//把string形式的数字转换为int型
+		for (int i = pos + 1; i < x.length() - 1; i++)
+			num = num * 10 + x[i] - '0';
+		tab[pos]->size.push_back(num);//把大小加入size的最后
+	}
+	tab[pos]->key.push_back(0);
+	tableName +=".txt";
+	string pathName=prePath+tableName;
+	tab[pos]->fp =fopen(pathName.c_str(),"w");
+	if(0==access(pathName.c_str(),0)){
+		string wrin;
+		wrin.clear();
+		for (int i = 0; i < tab[pos]->colName.size(); i++)
+			if(tab[pos]->key[i]==1){
+				wrin += tab[pos]->colName[i] +";"+ tab[pos]->type[i] + ";" + to_string(tab[pos]->size[i]) + ";"+"isKey"+";";
+			}else{
+            //以 列名;类型;大小; 的形式存入文件
+			wrin += tab[pos]->colName[i] + ";" + tab[pos]->type[i] + ";" + to_string(tab[pos]->size[i]) + ";"+"notKey"+";";
+			}
+		cout<<wrin<<endl;
+		wrin +="\n";
+		fprintf(tab[pos]->fp,wrin.c_str());
+		fclose(tab[pos]->fp);
+		cout<<"添加列成功！"<<endl;
+		return;
+	}
+	cout<<"该表不存在";
+}
+
+//alter table table_name
+//drop column column_name
+void myDBMS::DropColumn(string table_name){
+
+}
+
 //辅助函数,参数：表名,用于读一个txt表文件并读入tab容器中
 int myDBMS::posIsNos(string tableName) {
 	string pathName = prePath + tableName + ".txt";
@@ -272,14 +340,20 @@ int myDBMS::posIsNos(string tableName) {
 		if (tmp[i] == ';')
 			tmp[i] = ' ';//核心代码，将表的关系模式部分;分隔符改为空格
 	stringstream check(tmp);
-	string x, y, z;//x:列名 y:类型 z:大小
+	string x, y, z, q;//x:列名 y:类型 z:大小 q:主键情况
 	Tables* nxt = new Tables;//新建一个动态表nxt
 	nxt->name = tableName;//赋值表名
 	while (check >> x) {
-		check >> y >> z;
+		check >> y >> z>> q;
 		nxt->colName.push_back(x);
 		nxt->type.push_back(y);
 		nxt->size.push_back(atoi(z.c_str()));//atoi():把string转换为int
+		if(q=="isKey"){
+			nxt->key.push_back(1);
+		}
+		else{
+			nxt->key.push_back(0);
+		}
 	}
 	nxt->pathName = pathName;
 	tab.push_back(nxt);//
@@ -1036,6 +1110,22 @@ int main(void) {
 		}
 		else if(db.cmd == "connect"){
             db.connect("student","sc");
+		}
+		else if(db.cmd== "alter"){
+			string table_name,action;
+			cin>>db.cmd>>table_name;
+			db.transfer(); 
+			getchar();
+			if(db.cmd=="table"){
+				cin>>db.cmd;
+				db.transfer();
+				if(db.cmd=="add"){
+					db.AddColumn(table_name);
+				}
+				else if(db.cmd=="drop"){
+					db.DropColumn(table_name);
+				}
+			}
 		}
 		else {
 			string tmp;
