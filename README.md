@@ -65,3 +65,7 @@ DDL部分
   select Cno,score from student,sc where student.Sno = sc.Sno
 4.建表、删表
 5.数据删除
+
+
+2021/1/13
+词法分析，支持文件输入
