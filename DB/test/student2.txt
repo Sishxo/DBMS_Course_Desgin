@@ -1,0 +1,3 @@
+Sno;char;10;notKey;Sname;char;10;notKey;
+1001 sun
+1002 chen

@@ -102,7 +102,8 @@ void myDBMS::openDataBase(string dataBaseName) {
 		cout << "请先关闭当前打开的数据库" << endl;
 		return;
 	}
-	string pathName = "C:\\Users\\stell\\Desktop\\数据库原理课程设计文档202012\\DBMS\\" + dataBaseName;//拼接存储路径
+	//string pathName = "C:\\Users\\stell\\Desktop\\数据库原理课程设计文档202012\\DBMS\\" + dataBaseName;//拼接存储路径
+	string pathName = "E:\\CS346\\DBMS_Course_Desgin\\DB\\" + dataBaseName;//拼接存储路径
 	//检查数据库是否存在
 	if (0 != access(pathName.c_str(), 0))printf("该数据库不存在\n");//c_str:把C++中的string转换成C的字符串
 	else {
@@ -127,7 +128,8 @@ void myDBMS::closeDataBase() {
 
 //建立数据库
 void myDBMS::myCreateDataBase(string dataBaseName) {
-	string pathName = "C:\\Users\\stell\\Desktop\\数据库原理课程设计文档202012\\DBMS\\" + dataBaseName;
+	//string pathName = "C:\\Users\\stell\\Desktop\\数据库原理课程设计文档202012\\DBMS\\" + dataBaseName;
+	string pathName = "E:\\CS346\\DBMS_Course_Desgin\\DB\\" + dataBaseName;
 	//先判断是否有该数据库存在
 	if (0 != access(pathName.c_str(), 0)) {
         //返回0表示创建成功,-1表示失败,mkdir(path,mode)创建目录,mode默认0777（允许全局访问）
@@ -142,7 +144,8 @@ void myDBMS::myCreateDataBase(string dataBaseName) {
 
 //删除数据库
 void myDBMS::myDropDataBase(string dataBaseName) {
-	string pathName = "C:\\Users\\stell\\Desktop\\数据库原理课程设计文档202012\\DBMS\\" + dataBaseName;
+	//string pathName = "C:\\Users\\stell\\Desktop\\数据库原理课程设计文档202012\\DBMS\\" + dataBaseName;
+	string pathName = "E:\\CS346\\DBMS_Course_Desgin\\DB\\" + dataBaseName;
 	if (0 == access(pathName.c_str(), 0)) {//如果查询到该数据库
 		pathName = "rd " + pathName;//rd:删除目录
 		if (0 == system(pathName.c_str()))
