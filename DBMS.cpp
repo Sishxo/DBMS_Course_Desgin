@@ -88,6 +88,7 @@ public:
 	void DropColumn(string);//删除表中的列
 	void EditColumn(string);
 	void EditColumnName(string);
+	void myRename(string);
 	void connect(string,string,string,string,string);
 	void productImplement(vector<vector<string>> dimvalue,vector<vector<string>> &res,int,vector<string> tmp);
 	string get_toColName(string);//获取toColName
@@ -541,6 +542,23 @@ void myDBMS::EditColumnName(string tableName){
 		return;
 	}
 	cout<<"该表不存在";
+}
+
+void myDBMS::myRename(string tableName){
+	string pathName= prePath +tableName+".txt";
+	if (0 != access(pathName.c_str(), 0)) {
+		cout << "该表不存在!" << endl;
+		return;
+	}
+	string newname,tmp,x;
+	getline(cin,tmp);
+	stringstream ss(tmp);
+	ss>>x;
+	ss>>newname;
+	string newpath=prePath + newname+".txt";
+	rename(pathName.c_str(),newpath.c_str());
+	cout<<"修改表名成功！"<<endl;
+	return;
 }
 
 //辅助函数,参数：表名,用于读一个txt表文件并读入tab容器中
@@ -1531,6 +1549,13 @@ int main(void) {
 					db.EditColumnName(table_name);
 				}
 			}
+		}
+		else if(db.cmd=="rename"){
+			string table_name;
+			cin>>db.cmd>>table_name;
+			db.transfer();
+			getchar();
+			db.myRename(table_name);
 		}
 		else {
 			string tmp;
