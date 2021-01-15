@@ -1,0 +1,1 @@
+void myDBMS::myInsertwithCol(string tableName,string fieldname,string value)

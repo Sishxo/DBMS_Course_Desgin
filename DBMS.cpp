@@ -86,6 +86,8 @@ public:
 	void myQuery(string, string, string); //查询数据
 	void AddColumn(string);//增加表中的列
 	void DropColumn(string);//删除表中的列
+	void EditColumn(string);
+	void EditColumnName(string);
 	void connect(string,string,string,string,string);
 	void productImplement(vector<vector<string>> dimvalue,vector<vector<string>> &res,int,vector<string> tmp);
 	string get_toColName(string);//获取toColName
@@ -404,6 +406,138 @@ void myDBMS::DropColumn(string tableName){
 		fprintf(tab[pos]->fp,wrin.c_str());
 		fclose(tab[pos]->fp);
 		cout<<"删除列成功！"<<endl;
+		return;
+	}
+	cout<<"该表不存在";
+}
+
+void myDBMS::EditColumn(string tableName){
+	if(!open){
+		cout << "无选中数据库!" << endl;
+		return;
+	}
+	
+	int pos=inf;
+	for (int i = 0; i < tab.size(); i++)
+		if (tab[i]->name == tableName) {
+			pos=i; 
+			break;
+		}
+	if(pos==inf){
+		pos=posIsNos(tableName);
+	}
+	if(pos==-1) return;
+	string tmp,x,type;
+	getline(cin,tmp);
+	stringstream ss(tmp);
+	ss>>x;
+	ss>>x;
+	ss>>type;
+	int pos2;
+	tableName +=".txt";
+	string pathName=prePath+tableName;
+	//cout<<"break"<<endl;
+	char content[1024];
+	tab[pos]->fp =fopen(pathName.c_str(),"r");
+	if(0==access(pathName.c_str(),0)){
+		string value;
+		string wrin;
+		wrin.clear();
+		for(int i=0;i<tab[pos]->colName.size();i++){
+			if(x==tab[pos]->colName[i]){
+				pos2=i;
+				tab[pos]->type[i]=type;
+			}
+		}
+		//cout<<wrin<<endl;
+		for (int i = 0; i < tab[pos]->colName.size(); i++)
+			if(tab[pos]->key[i]=="isKey"){
+				wrin += tab[pos]->colName[i] +";"+ tab[pos]->type[i] + ";" + to_string(tab[pos]->size[i]) + ";"+"isKey"+";";
+			}else{
+			//以 列名;类型;大小; 的形式存入文件
+			wrin += tab[pos]->colName[i] + ";" + tab[pos]->type[i] + ";" + to_string(tab[pos]->size[i]) + ";"+"notKey"+";";
+			}
+		wrin +="\n";
+		fgets(content,1024,tab[pos]->fp);
+		while(!feof(tab[pos]->fp)){
+			memset(content,0,sizeof(content));
+			fgets(content,1024,tab[pos]->fp);
+			wrin +=content;
+			//cout<<wrin<<endl;
+		}
+		//wrin +="\n";
+		fclose(tab[pos]->fp);
+		tab[pos]->fp =fopen(pathName.c_str(),"w");
+		fprintf(tab[pos]->fp,wrin.c_str());
+		fclose(tab[pos]->fp);
+		cout<<"改变数据类型成功！"<<endl;
+		return;
+	}
+	cout<<"该表不存在";
+}
+
+void myDBMS::EditColumnName(string tableName){
+	if(!open){
+		cout << "无选中数据库!" << endl;
+		return;
+	}
+	
+	int pos=inf;
+	for (int i = 0; i < tab.size(); i++)
+		if (tab[i]->name == tableName) {
+			pos=i; 
+			break;
+		}
+	if(pos==inf){
+		pos=posIsNos(tableName);
+	}
+	if(pos==-1) return;
+	string tmp,x,newname,type;
+	getline(cin,tmp);
+	stringstream ss(tmp);
+	ss>>x;
+	ss>>x;
+	ss>>newname;
+	ss>>type;
+	int pos2;
+	tableName +=".txt";
+	string pathName=prePath+tableName;
+	//cout<<"break"<<endl;
+	char content[1024];
+	tab[pos]->fp =fopen(pathName.c_str(),"r");
+	if(0==access(pathName.c_str(),0)){
+		string value;
+		string wrin;
+		wrin.clear();
+		for(int i=0;i<tab[pos]->colName.size();i++){
+			if(x==tab[pos]->colName[i]){
+				pos2=i;
+				tab[pos]->colName[i]=newname;
+				tab[pos]->type[i]=type;
+			}
+		}
+		//cout<<wrin<<endl;
+		for (int i = 0; i < tab[pos]->colName.size(); i++)
+			if(tab[pos]->key[i]=="isKey"){
+				wrin += tab[pos]->colName[i] +";"+ tab[pos]->type[i] + ";" + to_string(tab[pos]->size[i]) + ";"+"isKey"+";";
+			}else{
+			//以 列名;类型;大小; 的形式存入文件
+			wrin += tab[pos]->colName[i] + ";" + tab[pos]->type[i] + ";" + to_string(tab[pos]->size[i]) + ";"+"notKey"+";";
+			}
+		wrin +="\n";
+		fgets(content,1024,tab[pos]->fp);
+		while(!feof(tab[pos]->fp)){
+			memset(content,0,sizeof(content));
+			fgets(content,1024,tab[pos]->fp);
+			wrin +=content;
+			//cout<<wrin<<endl;
+		}
+		//wrin +="\n";
+		fclose(tab[pos]->fp);
+		tab[pos]->fp =fopen(pathName.c_str(),"w");
+		fprintf(tab[pos]->fp,wrin.c_str());
+		fclose(tab[pos]->fp);
+		cout<<"改变数据类型成功！"<<endl;
 		return;
 	}
 	cout<<"该表不存在";
@@ -1391,6 +1525,10 @@ int main(void) {
 				}
 				else if(db.cmd=="drop"){
 					db.DropColumn(table_name);
+				}else if(db.cmd=="modify"){
+					db.EditColumn(table_name);
+				}else if(db.cmd=="change"){
+					db.EditColumnName(table_name);
 				}
 			}
 		}

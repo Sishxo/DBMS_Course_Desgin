@@ -1,6 +1,5 @@
-Sno;char;10;isKey;Sname;char;10;notKey;Sage;int;3;notKey;gender;char;1;notKey;
-1 s 1 
-1001 chen 16 
-1002 wang 16 
-1003 zhou 16 
-16 16 16 
+no;int;10;isKey;Sname;char;10;notKey;Sage;int;3;notKey;
+1001 chen 16
+1002 wang 16
+1003 zhou 16
+
